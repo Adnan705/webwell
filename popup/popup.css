@@ -1,0 +1,37 @@
+:root{
+  --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --mut:#64748b;
+  --brand:#6366f1; --line:#e2e8f0; --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,"Segoe UI",Inter,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+.pop{width:340px;padding:14px 14px 10px}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:34px;height:34px;border-radius:10px;display:block;flex:none}
+.brand strong{font-size:15px;display:block}
+.brand small{color:var(--mut);font-size:11px}
+.btn{border:0;background:var(--brand);color:#fff;font-weight:600;font-size:12px;
+  padding:8px 12px;border-radius:9px;cursor:pointer}
+.btn:hover{filter:brightness(.95)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px}
+.hero{display:flex;align-items:center;gap:14px}
+.hero .big{font-size:26px;font-weight:800}
+.hero .cap{color:var(--mut);font-size:11px;margin-top:2px}
+.live{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mut);margin-top:8px}
+.live .dot{width:8px;height:8px;border-radius:50%;background:#10b981;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+h4{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.site{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.site:first-of-type{border-top:0}
+.site img{width:18px;height:18px;border-radius:4px}
+.site .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.site .tm{color:var(--mut);font-variant-numeric:tabular-nums}
+.cat-dot{width:9px;height:9px;border-radius:50%;flex:none}
+footer{text-align:center;color:var(--mut);font-size:10px;padding:4px 0 2px}
+.score-ring{position:relative;flex:none}
+.score-ring svg{transform:rotate(0deg)}
+.score-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:800;padding-bottom:14px}
+.score-cap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:var(--mut);padding-top:26px;text-transform:uppercase;letter-spacing:.08em}
+.paused{font-size:12px;color:#f59e0b;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px}

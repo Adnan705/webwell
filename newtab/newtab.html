@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New Tab</title>
+<link rel="stylesheet" href="newtab.css">
+</head>
+<body data-theme="dusk">
+
+  <!-- Animated minimal gradient background -->
+  <div class="bg" aria-hidden="true">
+    <div class="bg-photo hidden" id="bgPhoto"></div>
+    <div class="shade hidden" id="bgShade"></div>
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+    <div class="grain"></div>
+    <div class="vignette"></div>
+  </div>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="ww-mini" id="wwMini" title="Today's WebWell stats">
+      <span class="dot"></span><span id="wwMiniText">…</span>
+    </div>
+    <nav class="links">
+      <a href="#" id="dashLink">Dashboard</a>
+      <a href="#" id="settingsLink">Settings</a>
+    </nav>
+  </header>
+
+  <!-- Centre: clock, greeting, focus -->
+  <main class="centre">
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date">&nbsp;</div>
+    <h1 class="greet" id="greet">&nbsp;</h1>
+
+    <!-- Focus: ask -->
+    <div class="focus-ask hidden" id="focusAsk">
+      <p class="prompt">What's your main focus today?</p>
+      <input id="focusInput" type="text" maxlength="120" placeholder="e.g. Finish CS301 assignment" autocomplete="off">
+    </div>
+
+    <!-- Focus: set -->
+    <div class="focus-set hidden" id="focusSet">
+      <p class="label">Today's focus</p>
+      <div class="focus-row">
+        <button class="check" id="focusCheck" title="Mark done"></button>
+        <span class="focus-text" id="focusText"></span>
+        <button class="icon-x" id="focusClear" title="Change focus">✕</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom-left: today's tasks -->
+  <aside class="tasks" id="tasksPanel">
+    <p class="label">Today's tasks</p>
+    <ul class="task-list" id="taskList"></ul>
+    <div class="task-add">
+      <input id="taskInput" type="text" maxlength="120" placeholder="Add something important…" autocomplete="off">
+    </div>
+  </aside>
+
+  <!-- Bottom-centre: quote -->
+  <div class="quote" id="quote"></div>
+
+  <!-- Bottom-right: landmark info + credits -->
+  <div class="landmark hidden" id="landmark">
+    <div class="lm-row">
+      <div>
+        <div class="lm-name" id="lmName"></div>
+        <div class="lm-fact" id="lmFact"></div>
+      </div>
+      <button class="lm-shuffle" id="lmShuffle" title="New background">↻</button>
+    </div>
+    <div class="lm-credit">Written &amp; Developed by Adnan · Photos: Wikimedia Commons</div>
+  </div>
+  <div class="credit" id="plainCredit">Written &amp; Developed by Adnan</div>
+
+  <!-- First-run name prompt -->
+  <div class="name-overlay hidden" id="nameOverlay">
+    <div class="name-card">
+      <p class="prompt">Hello. What's your name?</p>
+      <input id="nameInput" type="text" maxlength="40" placeholder="Your name" autocomplete="off">
+    </div>
+  </div>
+
+<script src="../lib/time.js"></script>
+<script src="../lib/categories.js"></script>
+<script src="newtab.js"></script>
+</body>
+</html>
