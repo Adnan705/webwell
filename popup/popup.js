@@ -1,6 +1,14 @@
 // WebWell popup: today's quick view.
 'use strict';
 
+// MV3 CSP blocks inline onerror handlers — hide broken favicons via capture-phase listener.
+document.addEventListener('error', e => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && String(t.src || '').indexOf('google.com/s2/favicons') !== -1) {
+    t.style.display = 'none';
+  }
+}, true);
+
 function productivityScore(data, cats) {
   let w = 0, t = 0;
   for (const d of Object.keys(data.domains)) {
@@ -53,7 +61,7 @@ async function render() {
   } else {
     html += entries.slice(0, 5).map(e =>
       '<div class="site"><span class="cat-dot" style="background:' + CATEGORY_META[e.cat].color + '" title="' + CATEGORY_META[e.cat].label + '"></span>' +
-      '<img src="' + faviconUrl(e.domain) + '" alt="" onerror="this.style.display=\'none\'">' +
+      '<img src="' + faviconUrl(e.domain) + '" alt="">' +
       '<span class="nm">' + esc(e.domain) + '</span><span class="tm">' + fmtDur(e.secs) + '</span></div>'
     ).join('');
   }

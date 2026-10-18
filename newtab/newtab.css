@@ -195,6 +195,7 @@ body[data-bgmode="photos"] .blob { display: none; }
 }
 .task-add input::placeholder { color: var(--ink-faint); }
 
+
 /* ---------- quote / credit ---------- */
 .quote {
   position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 4;

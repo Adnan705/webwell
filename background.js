@@ -13,6 +13,17 @@ let current = { domain: null, startedAt: null }; // ongoing session (in-memory c
 let windowFocused = true;
 let idleState = 'active';
 
+// Serialize top-level event handlers: two overlapping async handlers can
+// interleave their read-modify-write storage cycles (both read startedAt=T0,
+// both credit from T0) and lose seconds. Chaining them avoids the race.
+// Only the listener callbacks are wrapped — never the functions they call.
+let handlerChain = Promise.resolve();
+function serialized(fn) {
+  const p = handlerChain.then(() => fn().catch(() => {}));
+  handlerChain = p;
+  return p;
+}
+
 // Longest gap ever credited in one flush. The alarm fires every minute while
 // the browser runs, so a bigger gap means the browser was closed or asleep —
 // time we cannot honestly claim the user spent browsing.
@@ -64,13 +75,28 @@ async function flush() {
     return;
   }
   if (gapSecs > 0) {
-    const key = dayKey(now);
-    const data = await getDay(key);
-    data.domains[current.domain] = (data.domains[current.domain] || 0) + gapSecs;
-    data.total += gapSecs;
-    const hr = new Date(now).getHours();
-    data.hourly[hr] = (data.hourly[hr] || 0) + gapSecs;
-    await setDay(key, data);
+    // A session can span local midnight — split the credit at the day boundary
+    // so pre-midnight seconds land on the correct day. (gapSecs is capped at
+    // MAX_FLUSH_GAP_SECS, so at most one midnight can be crossed.)
+    let segStart = current.startedAt;
+    let remaining = gapSecs;
+    let guard = 0;
+    while (remaining > 0 && guard++ < 4) {
+      const nextMidnight = new Date(segStart);
+      nextMidnight.setHours(24, 0, 0, 0);
+      const segEnd = Math.min(segStart + remaining * 1000, nextMidnight.getTime());
+      const segSecs = Math.max(0, Math.round((segEnd - segStart) / 1000));
+      if (segSecs <= 0) break;
+      const key = dayKey(segStart);
+      const data = await getDay(key);
+      data.domains[current.domain] = (data.domains[current.domain] || 0) + segSecs;
+      data.total += segSecs;
+      const hr = new Date(segStart).getHours();
+      data.hourly[hr] = (data.hourly[hr] || 0) + segSecs;
+      await setDay(key, data);
+      remaining -= segSecs;
+      segStart = segEnd;
+    }
   }
   current.startedAt = now; // continue the same session
   await saveSession();
@@ -114,7 +140,7 @@ async function resync() {
 }
 
 // ---- event listeners ----
-chrome.tabs.onActivated.addListener(async () => {
+chrome.tabs.onActivated.addListener(() => serialized(async () => {
   await loadSession();
   const settings = await getSettings();
   if (!settings.trackingEnabled || !windowFocused || idleState !== 'active') return;
@@ -122,9 +148,9 @@ chrome.tabs.onActivated.addListener(async () => {
   const domain = tab ? domainOf(tab.url) : null;
   if (domain) await startSession(domain, true);
   else await stopSession();
-});
+}));
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => serialized(async () => {
   if (!tab.active || changeInfo.status !== 'complete') return;
   await loadSession();
   const settings = await getSettings();
@@ -132,29 +158,30 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const domain = domainOf(tab.url);
   if (domain) await startSession(domain, false); // same-tab navigation isn't a new "visit"
   else await stopSession();
-});
+}));
 
-chrome.windows.onFocusChanged.addListener(async (windowId) => {
+chrome.windows.onFocusChanged.addListener((windowId) => serialized(async () => {
   await loadSession();
   windowFocused = windowId !== chrome.windows.WINDOW_ID_NONE;
   await resync();
-});
+}));
 
-chrome.idle.onStateChanged.addListener(async (state) => {
+chrome.idle.onStateChanged.addListener((state) => serialized(async () => {
   await loadSession();
   idleState = state; // 'active' | 'idle' | 'locked'
   await resync();
-});
+}));
 
 // ---- periodic heartbeat: re-establish truth, flush, check limits ----
-chrome.alarms.onAlarm.addListener(async (alarm) => {
+chrome.alarms.onAlarm.addListener((alarm) => serialized(async () => {
   if (alarm.name !== 'webwell-tick') return;
   await resync(); // restarts the session if the worker was killed mid-session
   await flush();  // banks the elapsed time
-  await checkLimits();
-  await checkMilestones();
-  await checkForecastNudge();
-});
+  // Each check is isolated: one throwing must not skip the rest this minute.
+  try { await checkLimits(); } catch (e) {}
+  try { await checkMilestones(); } catch (e) {}
+  try { await checkForecastNudge(); } catch (e) {}
+}));
 
 async function checkLimits() {
   const limits = await getLimits();
@@ -165,6 +192,7 @@ async function checkLimits() {
   const r = await storeGet(['notifiedLimits']);
   const notified = r.notifiedLimits || {};
   if (notified.day !== key) { notified.day = key; notified.domains = []; }
+  await loadSession(); // snapshot the session after the awaits above
   for (const d of domains) {
     const limitSecs = limits[d] * 60;
     const spent = (data.domains[d] || 0) + ((current.domain === d && current.startedAt) ? Math.floor((Date.now() - current.startedAt) / 1000) : 0);
@@ -220,14 +248,17 @@ async function checkForecastNudge() {
   target.setHours(f.slumpHour, 0, 0, 0);
   const minsBefore = (target - now) / 60000;
   if (minsBefore > 0 && minsBefore <= 15) {
-    await storeSet({ forecastNudge: { day: todayK } });
-    chrome.notifications.create('forecast-' + todayK, {
-      type: 'basic',
-      iconUrl: 'icons/icon128.png',
-      title: 'WebWell forecast 🔮',
-      message: 'Your ' + hourLabel(f.slumpHour) + ' slump is coming (usually ' +
-        fmtDurShort(Math.round(f.slumpAvg)) + ' of distractions). How about a focus session instead?'
-    });
+    // Mark the day seen only if the notification actually goes out.
+    try {
+      chrome.notifications.create('forecast-' + todayK, {
+        type: 'basic',
+        iconUrl: 'icons/icon128.png',
+        title: 'WebWell forecast 🔮',
+        message: 'Your ' + hourLabel(f.slumpHour) + ' slump is coming (usually ' +
+          fmtDurShort(Math.round(f.slumpAvg)) + ' of distractions). How about a focus session instead?'
+      });
+      await storeSet({ forecastNudge: { day: todayK } });
+    } catch (e) {}
   }
 }
 
@@ -261,3 +292,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   return false;
 });
+
+// A worker restart re-runs this file with wiped module flags. Refresh the
+// true state immediately (rather than trusting the optimistic defaults until
+// the next alarm tick) so a tab event arriving first can't start a phantom
+// session in an unfocused/idle window.
+resync().catch(() => {});

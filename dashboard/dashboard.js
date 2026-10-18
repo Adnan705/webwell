@@ -1,6 +1,16 @@
 // WebWell dashboard.
 'use strict';
 
+// MV3's content-security-policy blocks inline onerror handlers, so broken
+// favicon images are hidden via a capture-phase error listener instead
+// (resource errors don't bubble, but they do trigger capture listeners).
+document.addEventListener('error', e => {
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && String(t.src || '').indexOf('google.com/s2/favicons') !== -1) {
+    t.style.display = 'none';
+  }
+}, true);
+
 // ---------------------------------------------------------------------------
 // Bug reports: paste your Google Form link or GitHub Issues URL here.
 // Examples:
@@ -11,9 +21,39 @@
 const BUG_REPORT_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSc3o1kfbSudJYkBzvkUIA0NCeifbXgTccBnzUps0IlZq1Exdg/viewform';
 
 let viewingKey = dayKey(Date.now());
-let siteFilter = 'all', siteQuery = '', trendDays = 14;
+let viewRange = 'day'; // 'day' | 'week' | 'month'
+let siteFilter = 'all', siteQuery = '', siteRange = 'day', trendDays = 14;
 
 function isTodayKey(k) { return k === dayKey(Date.now()); }
+
+function rangeDayKeys(anchorKey, type) {
+  const n = type === 'day' ? 1 : type === 'week' ? 7 : type === 'month' ? 30 : 365;
+  const keys = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(anchorKey + 'T12:00:00'); d.setDate(d.getDate() - i);
+    keys.push(dayKey(d.getTime()));
+  }
+  return keys;
+}
+
+function fullDateLabel(key) {
+  return new Date(key + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' });
+}
+
+function rangeLabel() {
+  if (viewRange === 'day') return dayTitle();
+  const keys = rangeDayKeys(viewingKey, viewRange);
+  const a = new Date(keys[0] + 'T12:00:00'), b = new Date(keys[keys.length - 1] + 'T12:00:00');
+  const fmt = d => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  return viewRange === 'week' ? fmt(a) + ' – ' + fmt(b)
+    : b.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+function heroDateHtml() {
+  // The circle always shows the anchor day number — the range (if any) lives
+  // in the title next to it. Keeps the hero clean and aligned in every mode.
+  return String(new Date(viewingKey + 'T12:00:00').getDate());
+}
 
 async function getDayData(key) {
   const data = await getDay(key);
@@ -28,6 +68,38 @@ async function getDayData(key) {
     } catch (e) { /* background asleep */ }
   }
   return data;
+}
+
+// Aggregate the browsing days in the current view range (ending at viewingKey).
+async function getRangeData() {
+  const r = await storeGet(['days']);
+  const days = r.days || {};
+  const agg = { domains: {}, visits: {}, hourly: {}, total: 0 };
+  const keys = rangeDayKeys(viewingKey, viewRange);
+  for (const k of keys) {
+    const d = days[k];
+    if (!d) continue;
+    const doms = d.domains || {}, vis = d.visits || {}, hr = d.hourly || {};
+    for (const dom of Object.keys(doms)) {
+      agg.domains[dom] = (agg.domains[dom] || 0) + doms[dom];
+      agg.visits[dom] = (agg.visits[dom] || 0) + (vis[dom] || 0);
+    }
+    for (let h = 0; h < 24; h++) agg.hourly[h] = (agg.hourly[h] || 0) + (hr[h] || 0);
+    agg.total += d.total || 0;
+  }
+  // fold in the live in-progress session when today is inside the range
+  if (keys.includes(dayKey(Date.now()))) {
+    try {
+      const res = await chrome.runtime.sendMessage({ type: 'webwell-live' });
+      const live = res && res.live;
+      if (live) {
+        agg.domains[live.domain] = (agg.domains[live.domain] || 0) + live.elapsed;
+        agg.total += live.elapsed;
+        agg.hourly[new Date().getHours()] = (agg.hourly[new Date().getHours()] || 0) + live.elapsed;
+      }
+    } catch (e) { /* background asleep */ }
+  }
+  return agg;
 }
 
 function entriesOf(data, cats) {
@@ -58,7 +130,9 @@ function scoreVerdict(s) {
 
 function shiftDay(n) {
   const d = new Date(viewingKey + 'T12:00:00');
-  d.setDate(d.getDate() + n);
+  if (viewRange === 'week') d.setDate(d.getDate() + n * 7);
+  else if (viewRange === 'month') d.setMonth(d.getMonth() + n);
+  else d.setDate(d.getDate() + n);
   viewingKey = dayKey(d.getTime());
   renderAll();
 }
@@ -103,8 +177,9 @@ function concentricSegs(segs, anim) {
   let r = 74;
   return segs.map(function (sg) {
     const c = 2 * Math.PI * r, off = c * (1 - Math.max(0, Math.min(1, sg.frac)));
+    // cat-arc always carries the dash (true proportions); draw-arc only adds the sweep animation.
     const arc = sg.frac > 0
-      ? '<circle class="' + (anim ? 'draw-arc' : '') + '" style="--c:' + c.toFixed(1) + ';--off:' + off.toFixed(1) + '" cx="' + cx + '" cy="' + cy + '" r="' + r +
+      ? '<circle class="cat-arc' + (anim ? ' draw-arc' : '') + '" style="--c:' + c.toFixed(1) + ';--off:' + off.toFixed(1) + '" cx="' + cx + '" cy="' + cy + '" r="' + r +
         '" fill="none" stroke="' + sg.color + '" stroke-width="13" stroke-linecap="round" transform="rotate(-90 ' + cx + ' ' + cy + ')"/>'
       : '';
     const el = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="rgba(140,140,150,.14)" stroke-width="13"/>' + arc;
@@ -122,14 +197,15 @@ function hourFmt(h) {
 
 function renderActivity(entries, data) {
   const q = actQuery.trim().toLowerCase();
-  let list = entries.slice(0, 12);
+  let list = entries;
   if (actCat !== 'all') list = list.filter(e => e.cat === actCat);
   if (q) list = list.filter(e => e.domain.includes(q));
+  list = list.slice(0, 12);
   document.getElementById('actCount').textContent = entries.length ? entries.length + ' sites' : '—';
   const max = Math.max.apply(null, entries.map(e => e.secs).concat([1]));
   document.getElementById('actList').innerHTML = list.length ? list.map(e =>
     '<div class="act-item">' +
-    '<img src="' + faviconUrl(e.domain) + '" onerror="this.style.display=\'none\'" alt="">' +
+    '<img src="' + faviconUrl(e.domain) + '" alt="">' +
     '<div style="min-width:0;flex:none;width:34%"><div class="a-t">' + esc(e.domain) + '</div>' +
     '<div class="a-s">' + e.visits + ' visits · ' + CATEGORY_META[e.cat].label + '</div></div>' +
     '<div class="act-bar"><div style="width:' + Math.max(3, Math.round(e.secs / max * 100)) + '%;background:' + CATEGORY_META[e.cat].color + '"></div></div>' +
@@ -140,29 +216,40 @@ function renderActivity(entries, data) {
 
 async function renderOverview() {
   const AW = animateWidgets; animateWidgets = false;
-  const data = await getDayData(viewingKey);
+  const data = await getRangeData();
   const cats = await getCategories();
   const entries = entriesOf(data, cats);
   const score = scoreOf(entries);
   const ct = catTotals(entries);
   const totalVisits = Object.values(data.visits).reduce((a, b) => a + b, 0);
+  const rl = rangeLabel();
+  const rnoun = viewRange === 'day' ? 'day' : viewRange === 'week' ? 'week' : 'month';
 
-  // yesterday delta
+  // previous-period delta (yesterday / previous 7 days / previous 30 days)
+  const allD = (await storeGet(['days'])).days || {};
+  const pn = viewRange === 'day' ? 1 : viewRange === 'week' ? 7 : 30;
+  let prevTotal = 0;
+  for (let i = 0; i < pn; i++) {
+    const d = new Date(viewingKey + 'T12:00:00'); d.setDate(d.getDate() - pn - i);
+    prevTotal += ((allD[dayKey(d.getTime())] || {}).total || 0);
+  }
+  const delta = data.total - prevTotal;
+  const vsLabel = viewRange === 'day' ? 'vs yesterday' : viewRange === 'week' ? 'vs previous week' : 'vs previous month';
   const yd = new Date(viewingKey + 'T12:00:00'); yd.setDate(yd.getDate() - 1);
   const ydata = await getDay(dayKey(yd.getTime()));
-  const delta = data.total - ydata.total;
 
   // hero
-  const d = new Date(viewingKey + 'T12:00:00');
-  document.getElementById('heroDateNum').textContent = d.getDate();
-  document.getElementById('heroDayTitle').textContent = dayTitle();
-  document.getElementById('todayDot').style.display = isTodayKey(viewingKey) ? 'none' : '';
+  document.getElementById('heroDateNum').textContent = heroDateHtml();
+  document.getElementById('heroDayTitle').textContent = rl;
+  document.getElementById('todayDot').style.display = (viewRange === 'day' && isTodayKey(viewingKey)) ? 'none' : '';
+  const prof = (await storeGet(['profile'])).profile || {};
+  const nm = (prof.name || '').trim();
+  document.querySelector('.ask-head h1').textContent = nm ? 'Hey ' + nm + ", here's your day" : "Hey, here's your day";
   document.getElementById('heroSub').textContent = data.total > 0
     ? fmtDur(data.total) + ' across ' + entries.length + ' websites — tracked privately, on this device.'
-    : 'No browsing tracked this day — tracked privately, on this device.';
-  const dt = dayTitle();
-  document.getElementById('scoreDay').textContent = dt;
-  document.getElementById('splitDay').textContent = dt;
+    : 'No browsing tracked this ' + rnoun + ' — tracked privately, on this device.';
+  document.getElementById('scoreDay').textContent = rl;
+  document.getElementById('splitDay').textContent = rl;
 
   // score card
   if (data.total > 0) countUp(document.getElementById('scoreNum'), score, v => Math.round(v));
@@ -170,7 +257,7 @@ async function renderOverview() {
   document.getElementById('scoreVerdict').textContent = data.total > 0 ? scoreVerdict(score) : 'Browse a little and I\'ll score your focus.';
   document.getElementById('scoreVs').innerHTML = data.total > 60
     ? '<span class="' + (delta > 0 ? 'up' : 'down') + '" style="font-weight:700">' +
-      (delta > 0 ? '▲ ' : '▼ ') + fmtDur(Math.abs(delta)) + '</span> vs yesterday'
+      (delta > 0 ? '▲ ' : '▼ ') + fmtDur(Math.abs(delta)) + '</span> ' + vsLabel
     : '';
 
   // time split
@@ -179,10 +266,21 @@ async function renderOverview() {
   document.getElementById('splitProdSub').textContent = data.total ? pct(ct.productive, data.total) + '% of browsing' : '';
   document.getElementById('splitDistSub').textContent = data.total ? pct(ct.distracting, data.total) + '% of browsing' : '';
 
-  // score donut (reference-style black ring + coral arc)
-  document.getElementById('scoreDonut').innerHTML =
-    svgScoreRing(data.total > 0 ? score : 0, 128, data.total > 0 ? score : '–', AW);
-  document.getElementById('donutSub').textContent = data.total > 0 ? fmtDur(data.total) + ' total · ' + totalVisits + ' visits' : 'no data yet';
+  // biggest drain — your #1 distraction, with a one-tap way to cap it
+  const drains = entries.filter(e => e.cat === 'distracting').sort((a, b) => b.secs - a.secs);
+  const drain = drains[0] || entries[0];
+  lastDrainDomain = drain ? drain.domain : '';
+  if (drain) {
+    document.getElementById('drainSite').textContent = drain.domain;
+    countUp(document.getElementById('drainTime'), drain.secs, fmtDur);
+    document.getElementById('drainSub').textContent =
+      pct(drain.secs, data.total) + '% of your ' + rnoun + ' · ' + drain.visits + ' visits' +
+      (drain.cat === 'distracting' ? '' : ' · marked ' + CATEGORY_META[drain.cat].label.toLowerCase());
+  } else {
+    document.getElementById('drainSite').textContent = 'Nothing yet';
+    document.getElementById('drainTime').textContent = '–';
+    document.getElementById('drainSub').textContent = 'Browse a little first.';
+  }
 
   // streak — last 13 days
   const r = await storeGet(['days']);
@@ -196,19 +294,23 @@ async function renderOverview() {
   const streakTotal = tracked.reduce((a, k) => a + allDays[k].total, 0);
   countUp(document.getElementById('streakNum'), tracked.length, v => Math.round(v));
   document.getElementById('streakDots').innerHTML = last13.map((k, i) =>
-    '<i class="' + (tracked.includes(k) ? 'on' : '') + (AW ? ' pop' : '') + '" style="animation-delay:' + (i * 45) + 'ms" title="' + k + '"></i>').join('');
+    '<i class="' + (tracked.includes(k) ? 'on' : '') + (AW ? ' pop' : '') + '" style="animation-delay:' + (i * 45) + 'ms" data-k="' + k + '"></i>').join('');
+  document.querySelectorAll('#streakDots i').forEach(dot => {
+    const k = dot.dataset.k;
+    const secs = (allDays[k] || {}).total || 0;
+    dot.addEventListener('mouseenter', e => showStreakTip(e, fullDateLabel(k) + ' — ' + (secs ? fmtDur(secs) : 'no browsing')));
+    dot.addEventListener('mousemove', moveStreakTip);
+    dot.addEventListener('mouseleave', hideStreakTip);
+    dot.addEventListener('click', () => { hideStreakTip(); openDayModal(k); });
+  });
   document.getElementById('streakSub').textContent = tracked.length ? fmtDur(streakTotal) + ' in 13 days' : 'Browse to start your streak';
 
-  // week sparkline
-  const weekVals = [];
-  for (let i = 6; i >= 0; i--) {
-    const dd = new Date(viewingKey + 'T12:00:00'); dd.setDate(dd.getDate() - i);
-    weekVals.push((allDays[dayKey(dd.getTime())] || {}).total || 0);
-  }
-  const weekTotal = weekVals.reduce((a, b) => a + b, 0);
-  countUp(document.getElementById('weekTotal'), weekTotal, fmtDur);
-  document.getElementById('weekSvg').innerHTML = sparkMini(weekVals, '#e8604c', 64, AW);
-  document.getElementById('weekSub').textContent = 'Last 7 days ending ' + dt.toLowerCase();
+  // sparkline card — follows the range: 7 days / 4 weeks / 6 months
+  const sb = await sparkBuckets(allD);
+  document.getElementById('weekCardTitle').innerHTML = sb.title + '<small>' + sb.cap + '</small>';
+  countUp(document.getElementById('weekTotal'), sb.total, fmtDur);
+  document.getElementById('weekSvg').innerHTML = sparkMini(sb.vals, '#e8604c', 64, AW);
+  document.getElementById('weekSub').textContent = sb.label;
 
   // categories — concentric rings
   const tot = data.total || 1;
@@ -317,29 +419,152 @@ async function insightsHtml(entries, data, ydata, cats) {
 function warn(ic, html) { return '<div class="insight warn"><span class="ic">' + ic + '</span><span>' + html + '</span></div>'; }
 function info(ic, html) { return '<div class="insight"><span class="ic">' + ic + '</span><span>' + html + '</span></div>'; }
 
+// Buckets behind the sparkline card: 7 days, 4 week-chunks, or 6 calendar months.
+async function sparkBuckets(allD) {
+  const sumKeys = keys => keys.reduce((a, k) => a + (((allD[k] || {}).total) || 0), 0);
+  if (viewRange === 'day') {
+    const vals = [];
+    for (let i = 6; i >= 0; i--) {
+      const dd = new Date(viewingKey + 'T12:00:00'); dd.setDate(dd.getDate() - i);
+      vals.push(((allD[dayKey(dd.getTime())] || {}).total) || 0);
+    }
+    return {
+      vals, total: vals.reduce((a, b) => a + b, 0),
+      title: 'This week', cap: 'Screen time',
+      label: 'Last 7 days ending ' + rangeLabel().toLowerCase()
+    };
+  }
+  if (viewRange === 'week') {
+    const vals = [];
+    for (let w = 3; w >= 0; w--) {
+      const end = new Date(viewingKey + 'T12:00:00'); end.setDate(end.getDate() - w * 7);
+      vals.push(sumKeys(rangeDayKeys(dayKey(end.getTime()), 'week')));
+    }
+    return {
+      vals, total: vals.reduce((a, b) => a + b, 0),
+      title: 'Last 4 weeks', cap: 'Week by week',
+      label: 'Weekly totals — each bar is one week'
+    };
+  }
+  const vals = [];
+  const base = new Date(viewingKey + 'T12:00:00');
+  for (let m = 5; m >= 0; m--) {
+    const dt = new Date(base.getFullYear(), base.getMonth() - m, 1);
+    const y = dt.getFullYear(), mo = dt.getMonth();
+    const dim = new Date(y, mo + 1, 0).getDate();
+    let s = 0;
+    for (let dd = 1; dd <= dim; dd++) s += (((allD[dayKey(new Date(y, mo, dd, 12).getTime())] || {}).total) || 0);
+    vals.push(s);
+  }
+  return {
+    vals, total: vals.reduce((a, b) => a + b, 0),
+    title: 'Last 6 months', cap: 'Month by month',
+    label: 'Monthly totals — each bar is one month'
+  };
+}
+
+/* streak tooltip + day-breakdown modal */
+let streakTipEl = null;
+function showStreakTip(e, text) {
+  if (!streakTipEl) {
+    streakTipEl = document.createElement('div');
+    streakTipEl.className = 'streak-tip';
+    document.body.appendChild(streakTipEl);
+  }
+  streakTipEl.textContent = text;
+  moveStreakTip(e);
+  streakTipEl.classList.add('show');
+}
+function moveStreakTip(e) {
+  if (streakTipEl) {
+    streakTipEl.style.left = e.clientX + 'px';
+    streakTipEl.style.top = (e.clientY - 10) + 'px';
+  }
+}
+function hideStreakTip() { if (streakTipEl) streakTipEl.classList.remove('show'); }
+
+async function openDayModal(key) {
+  const data = await getDayData(key);
+  const cats = await getCategories();
+  const entries = entriesOf(data, cats).slice(0, 12);
+  const max = Math.max.apply(null, entries.map(e => e.secs).concat([1]));
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay';
+  ov.innerHTML =
+    '<div class="modal-card" role="dialog" aria-label="Day breakdown">' +
+    '<div class="modal-head"><h3>' + esc(fullDateLabel(key)) + '</h3>' +
+    '<button class="icon-btn sm" id="dayModalClose" title="Close">✕</button></div>' +
+    '<div class="modal-sub">' + (data.total
+      ? fmtDur(data.total) + ' across ' + entries.length + ' sites — most time on <b>' + esc(entries[0].domain) + '</b>'
+      : 'No browsing recorded this day.') + '</div>' +
+    entries.map((e, i) =>
+      '<div class="modal-row' + (i === 0 ? ' top' : '') + '">' +
+      '<img src="' + faviconUrl(e.domain) + '" alt="">' +
+      '<span class="m-dom">' + esc(e.domain) + '</span>' +
+      '<span class="m-bar"><i style="width:' + Math.max(4, Math.round(e.secs / max * 100)) + '%;background:' + CATEGORY_META[e.cat].color + '"></i></span>' +
+      '<span class="m-time">' + fmtDur(e.secs) + '</span>' +
+      '</div>').join('') +
+    '</div>';
+  const close = () => ov.remove();
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  ov.querySelector('#dayModalClose').addEventListener('click', close);
+  document.body.appendChild(ov);
+}
+
 /* ---------------- SITES ---------------- */
+let lastDrainDomain = '';
+async function siteRangeKeys() {
+  if (siteRange === 'all') {
+    const r = await storeGet(['days']);
+    return Object.keys(r.days || {}).sort();
+  }
+  if (siteRange === 'day') return [viewingKey];
+  return rangeDayKeys(viewingKey, siteRange);
+}
+
 async function renderSites() {
   const el = document.getElementById('view-sites');
-  const data = await getDayData(viewingKey);
   const cats = await getCategories();
   const limits = await getLimits();
-  let entries = entriesOf(data, cats);
+  // aggregate over the selected range, anchored at the viewing date
+  const r = await storeGet(['days']);
+  const days = r.days || {};
+  const agg = { domains: {}, visits: {}, total: 0 };
+  const isDay = siteRange === 'day';
+  const keys = await siteRangeKeys();
+  for (const k of keys) {
+    const d = days[k];
+    if (!d) continue;
+    for (const dom of Object.keys(d.domains || {})) {
+      agg.domains[dom] = (agg.domains[dom] || 0) + d.domains[dom];
+      agg.visits[dom] = (agg.visits[dom] || 0) + ((d.visits || {})[dom] || 0);
+    }
+    agg.total += d.total || 0;
+  }
+  let entries = entriesOf(agg, cats);
   if (siteFilter !== 'all') entries = entries.filter(e => e.cat === siteFilter);
   if (siteQuery) entries = entries.filter(e => e.domain.includes(siteQuery));
+  const rangeName = { day: 'Today', week: 'This week', month: 'This month', year: 'This year', all: 'All time' }[siteRange];
 
   el.innerHTML =
-    '<div class="card"><h3>All websites — ' + esc(dayTitle()) + '</h3>' +
+    '<div class="card"><h3>All websites — ' + esc(rangeName) + '</h3>' +
     '<div class="toolbar">' +
     '<input id="siteSearch" class="search" placeholder="Search websites…" value="' + esc(siteQuery) + '">' +
+    '<div class="seg" id="rangeSegSites">' +
+    ['day', 'week', 'month', 'year', 'all'].map(t =>
+      '<button data-r="' + t + '" class="' + (siteRange === t ? 'active' : '') + '">' +
+      ({ day: 'Today', week: 'Week', month: 'Month', year: 'Year', all: 'All time' })[t] + '</button>').join('') +
+    '</div>' +
     '<div class="seg" id="catSeg">' +
     ['all', 'productive', 'neutral', 'distracting'].map(c =>
       '<button data-c="' + c + '" class="' + (siteFilter === c ? 'active' : '') + '">' +
       (c === 'all' ? 'All' : CATEGORY_META[c].label) + '</button>').join('') +
     '</div></div>' +
     (entries.length ?
-      '<table class="sites"><thead><tr><th>Website</th><th>Time</th><th>Visits</th><th>Category</th><th>Daily limit</th></tr></thead><tbody>' +
+      '<table class="sites"><thead><tr><th>Website</th><th>Time</th><th>Visits</th><th>Category</th>' +
+      (isDay ? '<th>Daily limit</th>' : '') + '</tr></thead><tbody>' +
       entries.map(e =>
-        '<tr><td><div class="site-cell"><img src="' + faviconUrl(e.domain) + '" onerror="this.style.display=\'none\'">' +
+        '<tr><td><div class="site-cell"><img src="' + faviconUrl(e.domain) + '">' +
         esc(e.domain) + '</div></td>' +
         '<td class="num">' + fmtDur(e.secs) + '</td>' +
         '<td class="num">' + e.visits + '</td>' +
@@ -347,22 +572,27 @@ async function renderSites() {
         ['productive', 'neutral', 'distracting'].map(c =>
           '<option value="' + c + '"' + (e.cat === c ? ' selected' : '') + '>' + CATEGORY_META[c].label + '</option>').join('') +
         '</select></td>' +
-        '<td><input class="limit-in" type="number" min="0" max="1440" placeholder="min" data-d="' + esc(e.domain) + '"' +
-        (limits[e.domain] ? ' value="' + limits[e.domain] + '"' : '') + ' title="Warn me after this many minutes per day"></td>' +
+        (isDay ? '<td><input class="limit-in" type="number" min="0" max="1440" placeholder="min" data-d="' + esc(e.domain) + '"' +
+        (limits[e.domain] ? ' value="' + limits[e.domain] + '"' : '') + ' title="Warn me after this many minutes per day"></td>' : '') +
         '</tr>').join('') +
       '</tbody></table>' :
       '<div class="empty">No websites match.</div>') +
-    '<div class="btn-row"><button class="btn" id="saveLimits">Save limits</button>' +
-    '<span style="font-size:12px;color:var(--mut);align-self:center">Limits warn you once per day per site.</span></div>' +
+    (isDay ?
+      '<div class="btn-row"><button class="btn" id="saveLimits">Save limits</button>' +
+      '<span style="font-size:12px;color:var(--mut);align-self:center">Limits warn you once per day per site.</span></div>'
+      : '<div class="sub-mut" style="margin-top:10px">Total across ' + entries.length + ' sites: <b>' + fmtDur(agg.total) + '</b></div>') +
     '</div>';
 
-  document.getElementById('siteSearch').addEventListener('input', e => { siteQuery = e.target.value.toLowerCase(); renderSites(); keepFocus('siteSearch'); });
+  document.getElementById('siteSearch').addEventListener('input', e => { siteQuery = e.target.value.toLowerCase(); renderSites().then(() => keepFocus('siteSearch')); });
+  document.querySelectorAll('#rangeSegSites button').forEach(b =>
+    b.addEventListener('click', () => { siteRange = b.dataset.r; renderSites(); }));
   document.querySelectorAll('#catSeg button').forEach(b => b.addEventListener('click', () => { siteFilter = b.dataset.c; renderSites(); }));
   document.querySelectorAll('select.cat').forEach(s => s.addEventListener('change', async () => {
     const c = await getCategories(); c[s.dataset.d] = s.value;
     await storeSet({ categories: c }); toast('Saved: ' + s.dataset.d + ' → ' + CATEGORY_META[s.value].label);
   }));
-  document.getElementById('saveLimits').addEventListener('click', async () => {
+  const saveBtn = document.getElementById('saveLimits');
+  if (saveBtn) saveBtn.addEventListener('click', async () => {
     const lim = await getLimits();
     document.querySelectorAll('.limit-in').forEach(inp => {
       const v = parseInt(inp.value, 10);
@@ -374,6 +604,7 @@ async function renderSites() {
 
 function keepFocus(id) {
   const i = document.getElementById(id);
+  if (!i) return;
   i.focus(); i.setSelectionRange(i.value.length, i.value.length);
 }
 
@@ -420,7 +651,7 @@ async function renderTrends() {
     list.slice().reverse().map(d => {
       const top = d.entries[0];
       return '<tr><td><b>' + d.full + '</b></td><td class="num">' + fmtDur(d.total) + '</td>' +
-        '<td>' + (top ? '<div class="site-cell"><img src="' + faviconUrl(top.domain) + '" onerror="this.style.display=\'none\'">' + esc(top.domain) +
+        '<td>' + (top ? '<div class="site-cell"><img src="' + faviconUrl(top.domain) + '">' + esc(top.domain) +
         ' <span class="num" style="color:var(--mut)">· ' + fmtDur(top.secs) + '</span></div>' : '—') + '</td>' +
         '<td class="num">' + scoreOf(d.entries) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
@@ -849,6 +1080,71 @@ function setRow(t, d, control) {
   return '<div class="set-row"><div><div class="t">' + t + '</div><div class="d">' + d + '</div></div><div>' + control + '</div></div>';
 }
 
+/* ---------------- CALENDAR POPUP ---------------- */
+let calAnchor = null;
+
+function toggleCalendar() {
+  const existing = document.getElementById('calPop');
+  if (existing) { existing.remove(); return; }
+  calAnchor = new Date(viewingKey + 'T12:00:00');
+  calAnchor.setDate(1);
+  renderCalendar();
+}
+
+async function renderCalendar() {
+  const old = document.getElementById('calPop');
+  if (old) old.remove();
+  const days = (await storeGet(['days'])).days || {};
+  const y = calAnchor.getFullYear(), m = calAnchor.getMonth();
+  const monthName = calAnchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // Monday-first
+  const dim = new Date(y, m + 1, 0).getDate();
+  let cells = '';
+  for (let i = 0; i < firstDow; i++) cells += '<span class="cal-d empty"></span>';
+  for (let dd = 1; dd <= dim; dd++) {
+    const k = dayKey(new Date(y, m, dd, 12).getTime());
+    const has = ((days[k] || {}).total || 0) > 0;
+    const cls = 'cal-d' + (has ? ' has' : '') + (isTodayKey(k) ? ' today' : '') +
+      (k === viewingKey && viewRange === 'day' ? ' sel' : '');
+    cells += '<button class="' + cls + '" data-k="' + k + '">' + dd + '</button>';
+  }
+  const pop = document.createElement('div');
+  pop.className = 'cal-pop';
+  pop.id = 'calPop';
+  pop.innerHTML =
+    '<div class="cal-head"><button id="calPrev" title="Previous month">‹</button><b>' + esc(monthName) + '</b>' +
+    '<button id="calNext" title="Next month">›</button></div>' +
+    '<div class="cal-grid">' +
+    ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(wd => '<span class="cal-wd">' + wd + '</span>').join('') +
+    cells + '</div>' +
+    '<button class="cal-today" id="calToday">Jump to today</button>';
+  const btn = document.getElementById('goToday');
+  const rc = btn.getBoundingClientRect();
+  pop.style.top = (rc.bottom + 10) + 'px';
+  pop.style.left = Math.max(12, rc.left - 90) + 'px';
+  document.body.appendChild(pop);
+
+  const nav = delta => { calAnchor.setMonth(calAnchor.getMonth() + delta); renderCalendar(); };
+  pop.querySelector('#calPrev').addEventListener('click', e => { e.stopPropagation(); nav(-1); });
+  pop.querySelector('#calNext').addEventListener('click', e => { e.stopPropagation(); nav(1); });
+  pop.querySelectorAll('.cal-d[data-k]').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation();
+    viewingKey = b.dataset.k;
+    viewRange = 'day';
+    animateWidgets = true;
+    pop.remove();
+    renderAll();
+  }));
+  pop.querySelector('#calToday').addEventListener('click', e => {
+    e.stopPropagation();
+    viewingKey = dayKey(Date.now());
+    viewRange = 'day';
+    animateWidgets = true;
+    pop.remove();
+    renderAll();
+  });
+}
+
 /* ---------------- shell ---------------- */
 function dayTitle() {
   if (isTodayKey(viewingKey)) return 'Today';
@@ -913,8 +1209,9 @@ function toast(msg) {
 
 async function renderAll() {
   const hdt = document.getElementById('heroDayTitle');
-  if (hdt) hdt.textContent = dayTitle();
-  document.getElementById('nextDay').style.visibility = isTodayKey(viewingKey) ? 'hidden' : 'visible';
+  if (hdt) hdt.textContent = rangeLabel();
+  document.getElementById('nextDay').style.visibility = (viewRange === 'day' && isTodayKey(viewingKey)) ? 'hidden' : 'visible';
+  document.querySelectorAll('#rangeSeg button').forEach(b => b.classList.toggle('active', b.dataset.r === viewRange));
   await updatePill();
   await updateAvatar();
   await renderOverview(); await renderSites(); await renderTrends(); await renderAsk(); await renderSettings();
@@ -937,7 +1234,57 @@ document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () =>
 
 document.getElementById('prevDay').addEventListener('click', () => { animateWidgets = true; shiftDay(-1); });
 document.getElementById('nextDay').addEventListener('click', () => { animateWidgets = true; shiftDay(1); });
-document.getElementById('goToday').addEventListener('click', () => { animateWidgets = true; viewingKey = dayKey(Date.now()); renderAll(); });
+document.getElementById('goToday').addEventListener('click', e => { e.stopPropagation(); toggleCalendar(); });
+document.addEventListener('click', e => {
+  const pop = document.getElementById('calPop');
+  if (pop && !pop.contains(e.target) && !e.target.closest('#goToday')) pop.remove();
+});
+document.querySelectorAll('#rangeSeg button').forEach(b => b.addEventListener('click', () => {
+  viewRange = b.dataset.r;
+  animateWidgets = true;
+  renderAll();
+}));
+document.getElementById('drainLimit').addEventListener('click', () => {
+  if (lastDrainDomain) siteQuery = lastDrainDomain;
+  siteRange = 'day';
+  siteFilter = 'all';
+  goView('sites');
+  renderSites();
+});
+
+// profile menu
+(function () {
+  const btn = document.getElementById('userMenuBtn');
+  const menu = document.getElementById('userMenu');
+  if (!btn || !menu) return;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (e.target.closest('#userMenu')) return; // menu buttons handle themselves
+    menu.classList.toggle('hidden');
+  });
+  document.addEventListener('click', e => {
+    if (!menu.classList.contains('hidden') && !btn.contains(e.target)) menu.classList.add('hidden');
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') menu.classList.add('hidden');
+  });
+  menu.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    menu.classList.add('hidden');
+    const act = b.dataset.act;
+    if (act === 'bug') {
+      if (BUG_REPORT_URL) chrome.tabs.create({ url: BUG_REPORT_URL });
+      else toast('Bug reporting isn\'t set up yet.');
+    } else {
+      goView('settings');
+      if (act === 'profile') {
+        setTimeout(() => {
+          const card = document.querySelector('#view-settings .card');
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 60);
+      }
+    }
+  }));
+})();
 document.getElementById('themeToggle').addEventListener('click', async () => {
   const s = await getSettings(); s.darkMode = !s.darkMode;
   await storeSet({ settings: s }); applyTheme(); renderSettings();
@@ -956,7 +1303,8 @@ document.getElementById('splitFoot').addEventListener('click', () => {
 function goView(name) {
   document.querySelectorAll('.nav').forEach(x => x.classList.toggle('active', x.dataset.view === name));
   document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-  document.getElementById('view-' + name).classList.remove('hidden');
+  const target = document.getElementById('view-' + name);
+  if (target) target.classList.remove('hidden');
 }
 document.querySelectorAll('.split-block.clickable').forEach(b =>
   b.addEventListener('click', () => filterActivity(b.dataset.cat)));

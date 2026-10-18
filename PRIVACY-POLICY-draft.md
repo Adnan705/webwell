@@ -22,4 +22,4 @@ WebWell is a browser extension that shows you how you spend your time on the web
 
 ## Contact
 Written & Developed by Adnan.
-For questions about this policy, contact: info.adnanak@gmail.com
+For questions about this policy, contact: **[your public email goes here]**
