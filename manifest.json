@@ -33,7 +33,7 @@
   "notifications"
  ],
  "short_name": "WebWell",
- "version": "1.6.10",
+ "version": "1.6.25",
  "chrome_url_overrides": {
   "newtab": "newtab/newtab.html"
  },

@@ -2,13 +2,19 @@
 'use strict';
 
 // MV3's content-security-policy blocks inline onerror handlers, so broken
-// favicon images are hidden via a capture-phase error listener instead
-// (resource errors don't bubble, but they do trigger capture listeners).
+// favicon images fall through an icon-source chain via a capture-phase error
+// listener instead (resource errors don't bubble, but they do trigger capture
+// listeners). Images opt in with data-domain + data-si="0"; each failure
+// advances to the next entry of iconSources(domain), hiding only when all fail.
 document.addEventListener('error', e => {
   const t = e.target;
-  if (t && t.tagName === 'IMG' && String(t.src || '').indexOf('google.com/s2/favicons') !== -1) {
-    t.style.display = 'none';
-  }
+  if (!t || t.tagName !== 'IMG' || !t.dataset.domain) return;
+  evictIconProbe(t.dataset.domain);
+  const sources = iconSources(t.dataset.domain);
+  const next = parseInt(t.dataset.si || '0', 10) + 1;
+  if (next >= sources.length) { t.style.display = 'none'; return; }
+  t.dataset.si = String(next);
+  t.src = sources[next];
 }, true);
 
 // ---------------------------------------------------------------------------
@@ -205,7 +211,7 @@ function renderActivity(entries, data) {
   const max = Math.max.apply(null, entries.map(e => e.secs).concat([1]));
   document.getElementById('actList').innerHTML = list.length ? list.map(e =>
     '<div class="act-item">' +
-    '<img src="' + faviconUrl(e.domain) + '" alt="">' +
+    '<img data-domain="' + esc(e.domain) + '" data-si="0" src="' + iconSources(e.domain)[0] + '" alt="">' +
     '<div style="min-width:0;flex:none;width:34%"><div class="a-t">' + esc(e.domain) + '</div>' +
     '<div class="a-s">' + e.visits + ' visits · ' + CATEGORY_META[e.cat].label + '</div></div>' +
     '<div class="act-bar"><div style="width:' + Math.max(3, Math.round(e.secs / max * 100)) + '%;background:' + CATEGORY_META[e.cat].color + '"></div></div>' +
@@ -272,6 +278,12 @@ async function renderOverview() {
   lastDrainDomain = drain ? drain.domain : '';
   if (drain) {
     document.getElementById('drainSite').textContent = drain.domain;
+    const logo = document.getElementById('drainLogo');
+    logo.dataset.domain = drain.domain;
+    logo.dataset.si = '0';
+    logo.style.display = '';
+    logo.src = iconSources(drain.domain)[0];
+    logo.alt = drain.domain;
     countUp(document.getElementById('drainTime'), drain.secs, fmtDur);
     document.getElementById('drainSub').textContent =
       pct(drain.secs, data.total) + '% of your ' + rnoun + ' · ' + drain.visits + ' visits' +
@@ -499,7 +511,7 @@ async function openDayModal(key) {
       : 'No browsing recorded this day.') + '</div>' +
     entries.map((e, i) =>
       '<div class="modal-row' + (i === 0 ? ' top' : '') + '">' +
-      '<img src="' + faviconUrl(e.domain) + '" alt="">' +
+      '<img data-domain="' + esc(e.domain) + '" data-si="0" src="' + iconSources(e.domain)[0] + '" alt="">' +
       '<span class="m-dom">' + esc(e.domain) + '</span>' +
       '<span class="m-bar"><i style="width:' + Math.max(4, Math.round(e.secs / max * 100)) + '%;background:' + CATEGORY_META[e.cat].color + '"></i></span>' +
       '<span class="m-time">' + fmtDur(e.secs) + '</span>' +
@@ -564,7 +576,7 @@ async function renderSites() {
       '<table class="sites"><thead><tr><th>Website</th><th>Time</th><th>Visits</th><th>Category</th>' +
       (isDay ? '<th>Daily limit</th>' : '') + '</tr></thead><tbody>' +
       entries.map(e =>
-        '<tr><td><div class="site-cell"><img src="' + faviconUrl(e.domain) + '">' +
+        '<tr><td><div class="site-cell"><img data-domain="' + esc(e.domain) + '" data-si="0" src="' + iconSources(e.domain)[0] + '">' +
         esc(e.domain) + '</div></td>' +
         '<td class="num">' + fmtDur(e.secs) + '</td>' +
         '<td class="num">' + e.visits + '</td>' +
@@ -651,7 +663,7 @@ async function renderTrends() {
     list.slice().reverse().map(d => {
       const top = d.entries[0];
       return '<tr><td><b>' + d.full + '</b></td><td class="num">' + fmtDur(d.total) + '</td>' +
-        '<td>' + (top ? '<div class="site-cell"><img src="' + faviconUrl(top.domain) + '">' + esc(top.domain) +
+        '<td>' + (top ? '<div class="site-cell"><img data-domain="' + esc(top.domain) + '" data-si="0" src="' + iconSources(top.domain)[0] + '">' + esc(top.domain) +
         ' <span class="num" style="color:var(--mut)">· ' + fmtDur(top.secs) + '</span></div>' : '—') + '</td>' +
         '<td class="num">' + scoreOf(d.entries) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
@@ -1215,6 +1227,8 @@ async function renderAll() {
   await updatePill();
   await updateAvatar();
   await renderOverview(); await renderSites(); await renderTrends(); await renderAsk(); await renderSettings();
+  // Background pass: upgrade every site icon to the highest-res version found.
+  upgradeAllIcons();
 }
 
 function showView(name) {

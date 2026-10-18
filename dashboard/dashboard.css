@@ -394,6 +394,7 @@ body.dark .leg-item.sel{background:var(--acc)}
 
 /* biggest drain card */
 .drain-site { font-size: 17px; font-weight: 700; margin-top: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drain-logo { width: 26px; height: 26px; border-radius: 7px; flex: none; }
 
 /* streak tooltip */
 .streak-tip {

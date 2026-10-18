@@ -54,6 +54,7 @@ async function loadState() {
   if (r.profile) profile = Object.assign(profile, r.profile);
   if (r.focus && r.focus.date === today) focus = r.focus;
   tasks = r.tasks || {};
+  daysData = r.days || {};
   document.body.dataset.theme = profile.theme || 'dusk';
   return r;
 }
@@ -282,6 +283,136 @@ function wireLinks() {
   });
 }
 
+/* ---------------- bookmarks: icon dock ---------------- */
+let bookmarks = []; // manual [{ id, name, url }] — stored under 'ntBookmarks'
+let bmHidden = [];  // auto domains the user hid — stored under 'ntHidden'
+let daysData = {};  // dashboard tracking data, for auto top-sites
+
+function bmDomain(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); }
+  catch (e) { return url; }
+}
+
+function bmNorm(url) {
+  url = url.trim();
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = 'https://' + url;
+  return url;
+}
+
+// Most-visited domains over the last 7 days of dashboard data (min 5 min total).
+function topDomains(days, n) {
+  const agg = {};
+  const now = Date.now();
+  for (let i = 0; i < 7; i++) {
+    const d = days[dayKey(now - i * 86400000)];
+    if (!d || !d.domains) continue;
+    for (const dom in d.domains) agg[dom] = (agg[dom] || 0) + d.domains[dom];
+  }
+  return Object.keys(agg)
+    .filter(dom => agg[dom] >= 300)
+    .sort((a, b) => agg[b] - agg[a])
+    .slice(0, n);
+}
+
+async function loadBookmarks() {
+  const r = await store.get(['ntBookmarks', 'ntHidden']);
+  bookmarks = Array.isArray(r.ntBookmarks) ? r.ntBookmarks : [];
+  bmHidden = Array.isArray(r.ntHidden) ? r.ntHidden : [];
+}
+
+function renderBookmarks() {
+  const dock = $('bmDock');
+  dock.innerHTML = '';
+  const seen = new Set(bookmarks.map(b => bmDomain(b.url).toLowerCase()));
+  const hidden = new Set(bmHidden.map(d => String(d).toLowerCase()));
+  const auto = topDomains(daysData, 6)
+    .filter(dom => !seen.has(dom.toLowerCase()) && !hidden.has(dom.toLowerCase()))
+    .map(dom => ({ id: 'a:' + dom, name: dom, url: 'https://' + dom, auto: true }));
+  const items = bookmarks.map(b => ({ id: b.id, name: b.name, url: b.url, auto: false }))
+    .concat(auto).slice(0, 8);
+  items.forEach(b => {
+    const a = document.createElement('a');
+    a.className = 'bm-tile';
+    a.href = b.url;
+    a.title = b.name;
+    const img = document.createElement('img');
+    img.alt = '';
+    // Multi-source icon chain (see iconSources in lib/time.js): highest-res
+    // first, automatic fallback on error, letter tile as last resort.
+    const domain = bmDomain(b.url);
+    const sources = iconSources(domain);
+    img.dataset.domain = domain;
+    img.dataset.si = '0';
+    img.addEventListener('error', () => {
+      evictIconProbe(domain);
+      const next = parseInt(img.dataset.si, 10) + 1;
+      if (next >= sources.length) {
+        img.remove();
+        const s = document.createElement('span');
+        s.className = 'bm-letter';
+        s.textContent = (b.name || '?').charAt(0).toUpperCase();
+        a.prepend(s);
+        return;
+      }
+      img.dataset.si = String(next);
+      img.src = sources[next];
+    });
+    img.src = sources[0];
+    a.appendChild(img);
+    const x = document.createElement('button');
+    x.className = 'bm-x';
+    x.textContent = '✕';
+    x.title = 'Remove bookmark';
+    x.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (b.auto) {
+        bmHidden.push(bmDomain(b.url));
+        store.set({ ntHidden: bmHidden }).then(renderBookmarks);
+      } else {
+        bookmarks = bookmarks.filter(k => k.id !== b.id);
+        store.set({ ntBookmarks: bookmarks }).then(renderBookmarks);
+      }
+    });
+    a.appendChild(x);
+    dock.appendChild(a);
+  });
+  const add = document.createElement('button');
+  add.className = 'bm-tile bm-add';
+  add.textContent = '+';
+  add.title = 'Add bookmark';
+  add.addEventListener('click', () => {
+    const pop = $('bmPop');
+    pop.classList.toggle('hidden');
+    if (!pop.classList.contains('hidden')) $('bmUrl').focus();
+  });
+  dock.appendChild(add);
+  // Background pass: swap in the highest-res icon per tile once probing settles.
+  upgradeAllIcons(dock);
+}
+
+async function addBookmark() {
+  const v = $('bmUrl').value.trim();
+  if (!v) return;
+  const url = bmNorm(v);
+  bookmarks.push({ id: 'b' + Date.now().toString(36), name: bmDomain(url), url });
+  await store.set({ ntBookmarks: bookmarks });
+  $('bmUrl').value = '';
+  $('bmPop').classList.add('hidden');
+  renderBookmarks();
+}
+
+function wireBookmarks() {
+  $('bmAddBtn').addEventListener('click', addBookmark);
+  $('bmUrl').addEventListener('keydown', e => { if (e.key === 'Enter') addBookmark(); });
+  document.addEventListener('click', e => {
+    const pop = $('bmPop');
+    if (!pop.classList.contains('hidden') && !e.target.closest('#bmPop') && !e.target.closest('.bm-add')) {
+      pop.classList.add('hidden');
+    }
+  });
+}
+
 /* ---------------- boot ---------------- */
 (async function init() {
   const r = await loadState();
@@ -296,6 +427,9 @@ function wireLinks() {
   wireFocus();
   renderTasks();
   wireTasks();
+  await loadBookmarks();
+  renderBookmarks();
+  wireBookmarks();
   renderMini(r);
   wireLinks();
 })();
