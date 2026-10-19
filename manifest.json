@@ -12,9 +12,11 @@
  "background": {
   "service_worker": "background.js"
  },
- "description": "Your Digital Wellbeing for the desktop: see which websites take your time, score your productivity, and get warned about your biggest time sinks. 100% local \u2014 no data ever leaves your browser.",
+ "description": "Your Digital Wellbeing for the desktop: see which websites take your time, score your productivity, and get warned about your biggest time sinks. Your browsing data stays 100% local \u2014 only features you turn on (AI chat, SoundCloud/radio) use the network.",
  "host_permissions": [
-  "https://generativelanguage.googleapis.com/*"
+  "https://generativelanguage.googleapis.com/*",
+  "https://*.soundcloud.com/*",
+  "https://*.sndcdn.com/*"
  ],
  "icons": {
   "128": "icons/icon128.png",
@@ -30,10 +32,12 @@
   "storage",
   "idle",
   "alarms",
-  "notifications"
+  "notifications",
+  "offscreen",
+  "favicon"
  ],
  "short_name": "WebWell",
- "version": "1.6.25",
+ "version": "1.6.60",
  "chrome_url_overrides": {
   "newtab": "newtab/newtab.html"
  },

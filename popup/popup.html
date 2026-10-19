@@ -2,20 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="popup.css">
+<link rel="stylesheet" href="popup.css?v=1.6.60">
 </head>
 <body>
   <div class="pop">
     <header>
       <div class="brand"><img class="logo" src="../icons/icon48.png" alt="WebWell"><div><strong>WebWell</strong><small id="dateLine"></small></div></div>
-      <button id="openDash" class="btn">Dashboard</button>
+      <div class="head-actions">
+        <button id="pauseBtn" class="icon-btn" title="Pause tracking" aria-label="Pause tracking"></button>
+        <button id="openDash" class="btn">Dashboard</button>
+      </div>
     </header>
+    <div class="card music-pop" id="popMusic">
+      <img id="popArt" class="pop-art" src="../newtab/img/lofi-disc.webp" alt="" width="44" height="44">
+      <div class="pop-meta">
+        <div id="popTitle" class="pop-title">Lofi Focus Radio</div>
+        <div id="popSub" class="pop-sub">Tap play to start</div>
+      </div>
+      <div class="pop-controls">
+        <button id="popPrev" title="Previous" aria-label="Previous">⏮</button>
+        <button id="popToggle" title="Play / pause" aria-label="Play or pause">▶</button>
+        <button id="popNext" title="Next" aria-label="Next">⏭</button>
+      </div>
+    </div>
     <div id="main"></div>
     <footer>Written &amp; Developed by Adnan</footer>
   </div>
-  <script src="../lib/time.js"></script>
-  <script src="../lib/categories.js"></script>
-  <script src="../lib/charts.js"></script>
-  <script src="popup.js"></script>
+  <script src="../lib/time.js?v=1.6.60"></script>
+  <script src="../lib/categories.js?v=1.6.60"></script>
+  <script src="../lib/charts.js?v=1.6.60"></script>
+  <script src="popup.js?v=1.6.60"></script>
 </body>
 </html>

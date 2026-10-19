@@ -1,7 +1,10 @@
 // WebWell new tab page — Momentum-style focus page. 100% local.
+// Startup design: paint the REAL page synchronously from a tiny localStorage
+// snapshot (window.__WW_BOOT, see boot.js), then reconcile with chrome.storage
+// in the background. No placeholders, no layout pop-in, no waiting on fetch().
 'use strict';
 
-/* ---------------- pure helpers (unit-testable) ---------------- */
+/* ---------------- pure helpers ---------------- */
 function greetingForHour(h) {
   if (h < 5) return 'Good night';
   if (h < 12) return 'Good morning';
@@ -25,62 +28,127 @@ const QUOTES = [
   'Well begun is half done.',
 ];
 
-function quoteForDay(dayOfYear) {
-  return QUOTES[((dayOfYear % QUOTES.length) + QUOTES.length) % QUOTES.length];
-}
+function quoteForDay(n) { return QUOTES[((n % QUOTES.length) + QUOTES.length) % QUOTES.length]; }
 
 function dayOfYear(d) {
-  const start = new Date(d.getFullYear(), 0, 0);
-  return Math.floor((d - start) / 86400000);
+  return Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
 }
 
-/* ---------------- storage ---------------- */
-const store = {
-  async get(keys) { return chrome.storage.local.get(keys); },
-  async set(obj) { return chrome.storage.local.set(obj); },
-};
+/* ---------------- state ---------------- */
+const $ = id => document.getElementById(id);
+const store = { get: keys => chrome.storage.local.get(keys) };
+const LANDMARKS = window.WW_LANDMARKS || [];
+const BOOT = window.__WW_BOOT || {};
 
 let profile = { name: '', theme: 'dusk', bgMode: 'photos', bgPick: null, pic: '' };
 let focus = null;   // { date, text, done }
 let tasks = {};     // { [dateKey]: [{ id, text, done }] }
 let today = '';
-let LANDMARKS = [];
+let bookmarks = []; // manual [{ id, name, url }]  ('ntBookmarks')
+let bmHidden = [];  // auto domains the user hid   ('ntHidden')
+let autoCache = []; // auto top-site domains (kept in the snapshot so the dock paints instantly)
+let daysData = {};
 
-const $ = id => document.getElementById(id);
+// Every write goes through persist(): it refreshes the instant-paint snapshot
+// and then saves to chrome.storage.
+function saveBoot() {
+  try {
+    localStorage.setItem('ww_boot', JSON.stringify({
+      v: 1, theme: profile.theme, bgMode: profile.bgMode, name: profile.name, bgPick: profile.bgPick,
+      focus, tasksDate: today, tasks: tasks[today] || [], bookmarks, hidden: bmHidden, auto: autoCache
+    }));
+  } catch (e) {}
+}
+function persist(obj) { saveBoot(); return chrome.storage.local.set(obj); }
 
+function hydrateFromBoot() {
+  today = dayKey(Date.now());
+  if (BOOT.v !== 1) return;
+  profile.name = BOOT.name || '';
+  profile.theme = BOOT.theme || 'dusk';
+  profile.bgMode = BOOT.bgMode === 'gradient' ? 'gradient' : 'photos';
+  profile.bgPick = BOOT.bgPick || null;
+  if (BOOT.focus && BOOT.focus.date === today) focus = BOOT.focus;
+  if (BOOT.tasksDate === today && Array.isArray(BOOT.tasks)) tasks[today] = BOOT.tasks;
+  bookmarks = Array.isArray(BOOT.bookmarks) ? BOOT.bookmarks : [];
+  bmHidden = Array.isArray(BOOT.hidden) ? BOOT.hidden : [];
+  autoCache = Array.isArray(BOOT.auto) ? BOOT.auto : [];
+}
+
+function stateSig() {
+  return JSON.stringify([profile.name, profile.theme, profile.bgMode, profile.bgPick, focus,
+    tasks[today] || [], bookmarks, bmHidden]);
+}
+
+// Real data from chrome.storage (small keys only — fast).
 async function loadState() {
   today = dayKey(Date.now());
-  const r = await store.get(['profile', 'focus', 'tasks', 'days', 'categories']);
+  const r = await store.get(['profile', 'focus', 'tasks', 'ntBookmarks', 'ntHidden']);
   if (r.profile) profile = Object.assign(profile, r.profile);
-  if (r.focus && r.focus.date === today) focus = r.focus;
+  profile.theme = profile.theme || 'dusk';
+  focus = (r.focus && r.focus.date === today) ? r.focus : null;
   tasks = r.tasks || {};
-  daysData = r.days || {};
-  document.body.dataset.theme = profile.theme || 'dusk';
-  return r;
+  // keep only 30 days of task history so storage doesn't grow forever
+  const cutoff = dayKey(Date.now() - 30 * 86400000);
+  let pruned = false;
+  for (const k of Object.keys(tasks)) if (k < cutoff) { delete tasks[k]; pruned = true; }
+  if (pruned) { try { await chrome.storage.local.set({ tasks }); } catch (e) {} }
+  bookmarks = Array.isArray(r.ntBookmarks) ? r.ntBookmarks : [];
+  bmHidden = Array.isArray(r.ntHidden) ? r.ntHidden : [];
+  // one-time cleanup of duplicates saved before the duplicate check existed
+  const seenKeys = new Set();
+  const clean = bookmarks.filter(b => { const k = bmKey(b.url); if (seenKeys.has(k)) return false; seenKeys.add(k); return true; });
+  if (clean.length !== bookmarks.length) {
+    bookmarks = clean;
+    try { await chrome.storage.local.set({ ntBookmarks: bookmarks }); } catch (e) {}
+  }
 }
 
-/* ---------------- clock / greeting ---------------- */
+/* ---------------- theme / clock / greeting ---------------- */
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', profile.theme || 'dusk');
+}
+
+let lastClockText = '';
 function tickClock() {
   const now = new Date();
-  $('clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  $('date').textContent = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+  // A tab left open past midnight must not keep yesterday's focus/tasks.
+  if (today && dayKey(now.getTime()) !== today && !tickClock._rolling) {
+    tickClock._rolling = true;
+    loadState().then(() => { paintAll(false); }).finally(() => { tickClock._rolling = false; });
+  }
+  // Manual formatting: instant (toLocaleTimeString can stall on first call).
+  let h = now.getHours();
+  const ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const t = h + ':' + String(now.getMinutes()).padStart(2, '0') + ' ' + ap;
+  if (t !== lastClockText) { lastClockText = t; $('clock').textContent = t; }
+  const wd = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
+  const mo = ['January','February','March','April','May','June','July','August','September','October','November','December'][now.getMonth()];
+  const dt = wd + ', ' + mo + ' ' + now.getDate();
+  if ($('date').textContent !== dt) $('date').textContent = dt;
   const g = greetingForHour(now.getHours());
-  $('greet').textContent = profile.name ? g + ', ' + profile.name + '.' : g + '.';
+  const gt = profile.name ? g + ', ' + profile.name + '.' : g + '.';
+  if ($('greet').textContent !== gt) $('greet').textContent = gt;
 }
 
-/* ---------------- name ---------------- */
+/* ---------------- name (first run) ---------------- */
+let nameWired = false;
 function maybeAskName() {
   if (profile.name) return;
-  $('nameOverlay').classList.remove('hidden');
+  const overlay = $('nameOverlay');
+  overlay.classList.remove('hidden');
   const input = $('nameInput');
   input.focus();
+  if (nameWired) return;
+  nameWired = true;
   input.addEventListener('keydown', async e => {
     if (e.key !== 'Enter') return;
     const v = input.value.trim();
     if (!v) return;
     profile.name = v;
-    await store.set({ profile });
-    $('nameOverlay').classList.add('hidden');
+    await persist({ profile });
+    overlay.classList.add('hidden');
     tickClock();
   });
 }
@@ -105,44 +173,56 @@ function wireFocus() {
     const v = e.target.value.trim();
     if (!v) return;
     focus = { date: today, text: v, done: false };
-    await store.set({ focus });
     e.target.value = '';
     renderFocus();
+    await persist({ focus });
   });
   $('focusCheck').addEventListener('click', async () => {
     if (!focus) return;
     focus.done = !focus.done;
-    await store.set({ focus });
     renderFocus();
+    await persist({ focus });
   });
   $('focusClear').addEventListener('click', async () => {
     focus = null;
-    await store.set({ focus: null });
     renderFocus();
     $('focusInput').focus();
+    await persist({ focus: null });
   });
 }
 
 /* ---------------- tasks ---------------- */
-function todaysTasks() {
-  return tasks[today] || [];
-}
+function todaysTasks() { return tasks[today] || []; }
 
+const TASK_EMPTY_LINES = [
+  'Nothing yet — what matters today?',
+  'A blank list. Full of potential.',
+  'Zero tasks. Suspiciously calm…',
+  'Today is unwritten. Go on.'
+];
+
+let freshTaskId = null;
 function renderTasks() {
   const list = $('taskList');
   const items = todaysTasks();
+  const doneCount = items.filter(x => x.done).length;
+  $('taskCount').textContent = items.length ? doneCount + '/' + items.length : '';
+  $('taskBar').style.width = items.length ? Math.round(doneCount / items.length * 100) + '%' : '0';
   if (!items.length) {
-    list.innerHTML = '<div class="task-empty">Nothing yet — what matters today?</div>';
+    const dn = Math.floor(Date.now() / 864e5);
+    list.innerHTML = '<div class="task-empty">' + TASK_EMPTY_LINES[dn % TASK_EMPTY_LINES.length] + '</div>';
     return;
   }
-  list.innerHTML = '';
+  const frag = document.createDocumentFragment();
   for (const t of items) {
     const li = document.createElement('li');
     if (t.done) li.className = 'done';
+    if (t.id === freshTaskId) li.classList.add('fresh');
     const b = document.createElement('button');
     b.className = 'tcheck';
     b.title = 'Mark done';
-    b.addEventListener('click', async () => { await toggleTask(t.id); });
+    b.setAttribute('aria-label', 'Mark done');
+    b.addEventListener('click', () => toggleTask(t.id));
     const s = document.createElement('span');
     s.className = 'ttext';
     s.textContent = t.text;
@@ -151,155 +231,144 @@ function renderTasks() {
     x.className = 'tdel';
     x.textContent = '✕';
     x.title = 'Delete';
-    x.addEventListener('click', async () => { await deleteTask(t.id); });
-    li.appendChild(b); li.appendChild(s); li.appendChild(x);
-    list.appendChild(li);
+    x.setAttribute('aria-label', 'Delete task');
+    x.addEventListener('click', () => deleteTask(t.id));
+    li.append(b, s, x);
+    frag.appendChild(li);
   }
-}
-
-async function saveTasks() {
-  await store.set({ tasks });
+  if (doneCount === items.length) {
+    const yay = document.createElement('div');
+    yay.className = 'task-alldone';
+    yay.textContent = 'All done! 🎉';
+    frag.appendChild(yay);
+  }
+  list.replaceChildren(frag);
+  freshTaskId = null;
 }
 
 async function addTask(text) {
   const v = text.trim();
   if (!v) return;
   const items = todaysTasks();
-  items.push({ id: 't' + Date.now().toString(36) + Math.floor(Math.random() * 1e4), text: v.slice(0, 120), done: false });
+  const id = 't' + Date.now().toString(36) + Math.floor(Math.random() * 1e4);
+  items.push({ id, text: v.slice(0, 120), done: false });
   tasks[today] = items;
-  await saveTasks();
+  freshTaskId = id;
   renderTasks();
+  await persist({ tasks });
 }
-
 async function toggleTask(id) {
-  const items = todaysTasks();
-  const t = items.find(x => x.id === id);
+  const t = todaysTasks().find(x => x.id === id);
   if (!t) return;
   t.done = !t.done;
-  await saveTasks();
   renderTasks();
+  await persist({ tasks });
 }
-
 async function deleteTask(id) {
   tasks[today] = todaysTasks().filter(x => x.id !== id);
-  await saveTasks();
   renderTasks();
+  await persist({ tasks });
 }
-
 function wireTasks() {
   $('taskInput').addEventListener('keydown', async e => {
     if (e.key !== 'Enter') return;
-    await addTask(e.target.value);
+    const v = e.target.value;
     e.target.value = '';
+    await addTask(v);
   });
 }
 
 /* ---------------- background: landmark photos or gradient ---------------- */
-async function loadLandmarks() {
-  try {
-    const r = await fetch('bg/landmarks.json');
-    LANDMARKS = await r.json();
-  } catch (e) { LANDMARKS = []; }
-}
-
 function pickBgIndex() {
   if (!LANDMARKS.length) return -1;
   if (profile.bgPick && profile.bgPick.date === today &&
-      profile.bgPick.idx >= 0 && profile.bgPick.idx < LANDMARKS.length) {
-    return profile.bgPick.idx;
-  }
+      profile.bgPick.idx >= 0 && profile.bgPick.idx < LANDMARKS.length) return profile.bgPick.idx;
   return dayOfYear(new Date()) % LANDMARKS.length;
 }
 
-function showLandmark(idx) {
+let shownIdx = -1, photoFlip = false, lmToken = 0;
+function showLandmark(idx, animate) {
   const lm = LANDMARKS[idx];
-  if (!lm) return;
-  const photo = $('bgPhoto');
-  photo.style.backgroundImage = 'url("bg/' + lm.file + '")';
-  // restart the fade-in animation
-  photo.style.animation = 'none';
-  void photo.offsetWidth;
-  photo.style.animation = '';
-  $('lmName').textContent = lm.name;
-  $('lmFact').textContent = lm.fact;
+  if (!lm || idx === shownIdx) return;
+  shownIdx = idx;
+  const token = ++lmToken;
+  const url = 'bg/' + lm.file;
+  // Placeholder tone (average colour of the photo) shows while the image decodes.
+  document.documentElement.style.backgroundColor = lm.c || '';
+  const next = $(photoFlip ? 'bgPhoto' : 'bgPhotoB');
+  const prev = $(photoFlip ? 'bgPhotoB' : 'bgPhoto');
+  photoFlip = !photoFlip;
+  const reveal = () => {
+    if (token !== lmToken) return;
+    next.style.backgroundImage = 'url("' + url + '")';
+    next.classList.remove('hidden');
+    // next frame so the opacity transition actually runs
+    requestAnimationFrame(() => {
+      next.classList.add('on');
+      prev.classList.remove('on');
+    });
+  };
+  const im = new Image();
+  im.src = url;
+  if (im.decode) im.decode().then(reveal, reveal); else im.onload = reveal;
+  const nm = $('lmName'), fc = $('lmFact');
+  nm.textContent = lm.name; fc.textContent = lm.fact;
+  if (animate) {
+    const box = $('landmark');
+    box.classList.remove('swap'); void box.offsetWidth; box.classList.add('swap');
+  }
 }
 
-async function applyBackground() {
+function applyBackground() {
   const mode = profile.bgMode === 'gradient' ? 'gradient' : 'photos';
-  document.body.dataset.bgmode = mode;
+  document.documentElement.setAttribute('data-bgmode', mode);
   const isPhotos = mode === 'photos' && LANDMARKS.length > 0;
-  $('bgPhoto').classList.toggle('hidden', !isPhotos);
   $('bgShade').classList.toggle('hidden', !isPhotos);
   $('landmark').classList.toggle('hidden', !isPhotos);
   $('plainCredit').classList.toggle('hidden', isPhotos);
-  if (isPhotos) showLandmark(pickBgIndex());
+  if (!isPhotos) {
+    $('bgPhoto').classList.add('hidden'); $('bgPhotoB').classList.add('hidden');
+    document.documentElement.style.backgroundColor = '';
+    shownIdx = -1;
+  } else {
+    showLandmark(pickBgIndex(), false);
+  }
 }
 
 function wireShuffle() {
   $('lmShuffle').addEventListener('click', async () => {
     if (LANDMARKS.length < 2) return;
-    let idx = pickBgIndex();
-    let next = idx;
-    while (next === idx) next = Math.floor(Math.random() * LANDMARKS.length);
+    let next = shownIdx;
+    while (next === shownIdx) next = Math.floor(Math.random() * LANDMARKS.length);
     profile.bgPick = { date: today, idx: next };
-    await store.set({ profile });
-    showLandmark(next);
+    showLandmark(next, true);
+    await persist({ profile });
   });
-}
-/* ---------------- WebWell mini stats ---------------- */
-function scoreOfDay(data, cats) {
-  let w = 0, t = 0;
-  for (const d of Object.keys(data.domains || {})) {
-    const cat = categoryOf(d, cats);
-    const secs = data.domains[d];
-    w += CATEGORY_META[cat].score * secs;
-    t += secs;
-  }
-  return t ? Math.round(w / t) : 0;
-}
-
-async function renderMini(r) {
-  const key = dayKey(Date.now());
-  const data = (r.days && r.days[key]) || { domains: {}, total: 0 };
-  const cats = r.categories || {};
-  const el = $('wwMiniText');
-  if (!data.total) {
-    el.textContent = 'No browsing tracked yet today';
-    return;
-  }
-  const score = scoreOfDay(data, cats);
-  el.textContent = 'Today: ' + fmtDurShort(data.total) + ' tracked · score ' + score;
 }
 
 /* ---------------- links ---------------- */
 function wireLinks() {
-  $('dashLink').addEventListener('click', e => {
-    e.preventDefault();
-    location.href = chrome.runtime.getURL('dashboard/dashboard.html');
-  });
-  $('settingsLink').addEventListener('click', e => {
-    e.preventDefault();
-    location.href = chrome.runtime.getURL('dashboard/dashboard.html') + '#settings';
-  });
+  const base = chrome.runtime.getURL('dashboard/dashboard.html');
+  $('dashLink').addEventListener('click', e => { e.preventDefault(); location.href = base; });
+  $('settingsLink').addEventListener('click', e => { e.preventDefault(); location.href = base + '#settings'; });
 }
 
 /* ---------------- bookmarks: icon dock ---------------- */
-let bookmarks = []; // manual [{ id, name, url }] — stored under 'ntBookmarks'
-let bmHidden = [];  // auto domains the user hid — stored under 'ntHidden'
-let daysData = {};  // dashboard tracking data, for auto top-sites
-
 function bmDomain(url) {
-  try { return new URL(url).hostname.replace(/^www\./, ''); }
-  catch (e) { return url; }
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; }
 }
-
 function bmNorm(url) {
   url = url.trim();
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) url = 'https://' + url;
   return url;
 }
+// gmail.com, https://gmail.com/ and https://www.gmail.com are the same bookmark.
+function bmKey(url) {
+  return String(url || '').trim().toLowerCase()
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+}
 
-// Most-visited domains over the last 7 days of dashboard data (min 5 min total).
+// Most-visited domains over the last 7 days (min 5 min total).
 function topDomains(days, n) {
   const agg = {};
   const now = Date.now();
@@ -308,98 +377,98 @@ function topDomains(days, n) {
     if (!d || !d.domains) continue;
     for (const dom in d.domains) agg[dom] = (agg[dom] || 0) + d.domains[dom];
   }
-  return Object.keys(agg)
-    .filter(dom => agg[dom] >= 300)
-    .sort((a, b) => agg[b] - agg[a])
-    .slice(0, n);
+  return Object.keys(agg).filter(dom => agg[dom] >= 300).sort((a, b) => agg[b] - agg[a]).slice(0, n);
 }
 
-async function loadBookmarks() {
-  const r = await store.get(['ntBookmarks', 'ntHidden']);
-  bookmarks = Array.isArray(r.ntBookmarks) ? r.ntBookmarks : [];
-  bmHidden = Array.isArray(r.ntHidden) ? r.ntHidden : [];
-}
-
-function renderBookmarks() {
+let dockSig = '';
+function renderBookmarks(first) {
   const dock = $('bmDock');
-  dock.innerHTML = '';
   const seen = new Set(bookmarks.map(b => bmDomain(b.url).toLowerCase()));
   const hidden = new Set(bmHidden.map(d => String(d).toLowerCase()));
-  const auto = topDomains(daysData, 6)
+  const manual = bookmarks.map(b => ({ id: b.id, name: b.name, url: b.url, auto: false }));
+  const auto = autoCache
     .filter(dom => !seen.has(dom.toLowerCase()) && !hidden.has(dom.toLowerCase()))
     .map(dom => ({ id: 'a:' + dom, name: dom, url: 'https://' + dom, auto: true }));
-  const items = bookmarks.map(b => ({ id: b.id, name: b.name, url: b.url, auto: false }))
-    .concat(auto).slice(0, 8);
-  items.forEach(b => {
+  const items = manual.concat(auto);   // no cap: nothing you add is ever dropped
+  const sig = JSON.stringify(items.map(i => [i.id, i.url]));
+  if (sig === dockSig && dock.firstChild) return;   // nothing changed => don't touch the DOM
+  dockSig = sig;
+
+  const frag = document.createDocumentFragment();
+  items.forEach((b, i) => {
     const a = document.createElement('a');
-    a.className = 'bm-tile';
+    a.className = 'bm-tile' + (first ? ' pop' : '');
+    if (first) a.style.setProperty('--i', i);
     a.href = b.url;
     a.title = b.name;
+    const domain = bmDomain(b.url);
     const img = document.createElement('img');
     img.alt = '';
-    // Multi-source icon chain (see iconSources in lib/time.js): highest-res
-    // first, automatic fallback on error, letter tile as last resort.
-    const domain = bmDomain(b.url);
-    const sources = iconSources(domain);
-    img.dataset.domain = domain;
-    img.dataset.si = '0';
+    img.width = 28; img.height = 28;
+    img.decoding = 'async';
+    img.src = faviconUrl(domain, 28);
     img.addEventListener('error', () => {
-      evictIconProbe(domain);
-      const next = parseInt(img.dataset.si, 10) + 1;
-      if (next >= sources.length) {
-        img.remove();
-        const s = document.createElement('span');
-        s.className = 'bm-letter';
-        s.textContent = (b.name || '?').charAt(0).toUpperCase();
-        a.prepend(s);
-        return;
-      }
-      img.dataset.si = String(next);
-      img.src = sources[next];
+      img.remove();
+      const s = document.createElement('span');
+      s.className = 'bm-letter';
+      s.textContent = (b.name || '?').charAt(0).toUpperCase();
+      a.prepend(s);
     });
-    img.src = sources[0];
     a.appendChild(img);
     const x = document.createElement('button');
     x.className = 'bm-x';
     x.textContent = '✕';
     x.title = 'Remove bookmark';
+    x.setAttribute('aria-label', 'Remove bookmark');
     x.addEventListener('click', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (b.auto) {
-        bmHidden.push(bmDomain(b.url));
-        store.set({ ntHidden: bmHidden }).then(renderBookmarks);
-      } else {
-        bookmarks = bookmarks.filter(k => k.id !== b.id);
-        store.set({ ntBookmarks: bookmarks }).then(renderBookmarks);
-      }
+      e.preventDefault(); e.stopPropagation();
+      a.classList.add('leaving');
+      setTimeout(() => {
+        if (b.auto) { bmHidden.push(bmDomain(b.url)); persist({ ntHidden: bmHidden }); }
+        else { bookmarks = bookmarks.filter(k => k.id !== b.id); persist({ ntBookmarks: bookmarks }); }
+        renderBookmarks(false);
+      }, 160);
     });
     a.appendChild(x);
-    dock.appendChild(a);
+    frag.appendChild(a);
   });
   const add = document.createElement('button');
-  add.className = 'bm-tile bm-add';
-  add.textContent = '+';
+  add.className = 'bm-tile bm-add' + (first ? ' pop' : '');
+  if (first) add.style.setProperty('--i', items.length);
+  add.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 1v12M1 7h12"/></svg>';
   add.title = 'Add bookmark';
+  add.setAttribute('aria-label', 'Add bookmark');
   add.addEventListener('click', () => {
     const pop = $('bmPop');
     pop.classList.toggle('hidden');
     if (!pop.classList.contains('hidden')) $('bmUrl').focus();
   });
-  dock.appendChild(add);
-  // Background pass: swap in the highest-res icon per tile once probing settles.
-  upgradeAllIcons(dock);
+  frag.appendChild(add);
+  dock.replaceChildren(frag);
+}
+
+function showBmErr(msg) {
+  const err = $('bmErr');
+  err.textContent = msg;
+  err.classList.remove('hidden');
+  clearTimeout(err._t);
+  err._t = setTimeout(() => err.classList.add('hidden'), 2200);
 }
 
 async function addBookmark() {
   const v = $('bmUrl').value.trim();
   if (!v) return;
   const url = bmNorm(v);
+  let okUrl = false;   // only real web links (blocks javascript:/data:/file:)
+  try { const u = new URL(url); okUrl = (u.protocol === 'http:' || u.protocol === 'https:') && u.hostname.includes('.'); } catch (e) {}
+  if (!okUrl) { showBmErr('That doesn’t look like a web link'); return; }
+  if (bookmarks.some(b => bmKey(b.url) === bmKey(url))) { showBmErr('Already in your dock'); return; }
   bookmarks.push({ id: 'b' + Date.now().toString(36), name: bmDomain(url), url });
-  await store.set({ ntBookmarks: bookmarks });
   $('bmUrl').value = '';
   $('bmPop').classList.add('hidden');
-  renderBookmarks();
+  $('bmErr').classList.add('hidden');
+  renderBookmarks(false);
+  await persist({ ntBookmarks: bookmarks });
 }
 
 function wireBookmarks() {
@@ -407,29 +476,53 @@ function wireBookmarks() {
   $('bmUrl').addEventListener('keydown', e => { if (e.key === 'Enter') addBookmark(); });
   document.addEventListener('click', e => {
     const pop = $('bmPop');
-    if (!pop.classList.contains('hidden') && !e.target.closest('#bmPop') && !e.target.closest('.bm-add')) {
-      pop.classList.add('hidden');
+    if (!pop.classList.contains('hidden') && !e.target.closest('#bmPop') && !e.target.closest('.bm-add')) pop.classList.add('hidden');
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      $('bmPop').classList.add('hidden');
+      const mc = $('musicCard'); if (mc) mc.classList.add('hidden');
     }
   });
 }
 
 /* ---------------- boot ---------------- */
-(async function init() {
-  const r = await loadState();
-  await loadLandmarks();
-  await applyBackground();
-  wireShuffle();
+function paintAll(first) {
+  applyTheme();
+  applyBackground();
   tickClock();
-  setInterval(tickClock, 5000);
   $('quote').textContent = '“' + quoteForDay(dayOfYear(new Date())) + '”';
-  maybeAskName();
   renderFocus();
-  wireFocus();
   renderTasks();
-  wireTasks();
-  await loadBookmarks();
-  renderBookmarks();
-  wireBookmarks();
-  renderMini(r);
-  wireLinks();
+  renderBookmarks(first);
+}
+
+(function init() {
+  try {
+    const v = chrome.runtime.getManifest().version;
+    $('wwVer').textContent = 'v' + v; $('wwVer2').textContent = 'v' + v;
+  } catch (e) {}
+
+  // 1) FIRST PAINT — fully synchronous, from the snapshot.
+  hydrateFromBoot();
+  wireFocus(); wireTasks(); wireShuffle(); wireBookmarks(); wireLinks();
+  paintAll(true);
+  document.body.classList.add('ready');
+  setInterval(tickClock, 5000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tickClock(); });
+
+  // 2) RECONCILE — real data arrives; only touch the DOM if something differs.
+  const before = stateSig();
+  loadState().then(() => {
+    if (stateSig() !== before) paintAll(false);
+    saveBoot();
+    maybeAskName();
+  }).catch(() => { maybeAskName(); });
+
+  // 3) History is large — load last; auto-suggested sites fill in when ready.
+  store.get(['days']).then(r => {
+    daysData = (r && r.days) || {};
+    const a = topDomains(daysData, 6);
+    if (JSON.stringify(a) !== JSON.stringify(autoCache)) { autoCache = a; renderBookmarks(false); saveBoot(); }
+  }).catch(() => {});
 })();

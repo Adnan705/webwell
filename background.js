@@ -262,7 +262,9 @@ async function checkForecastNudge() {
   }
 }
 
-chrome.runtime.onInstalled.addListener(async (details) => {
+// FIX: these used to run un-serialized, so onInstalled/onStartup and the
+// top-level resync() could overlap on a worker start and double-count a visit.
+chrome.runtime.onInstalled.addListener((details) => serialized(async () => {
   const settings = await getSettings();
   chrome.idle.setDetectionInterval(settings.idleTimeout);
   chrome.alarms.create('webwell-tick', { periodInMinutes: 1 });
@@ -270,17 +272,53 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
   }
   await resync();
-});
+}));
 
-chrome.runtime.onStartup.addListener(async () => {
+chrome.runtime.onStartup.addListener(() => serialized(async () => {
   const settings = await getSettings();
   chrome.idle.setDetectionInterval(settings.idleTimeout);
   chrome.alarms.create('webwell-tick', { periodInMinutes: 1 });
   await resync();
+}));
+
+// Only the service worker can reliably create the offscreen music player.
+// The new tab / popup ask for it here instead of each calling
+// chrome.offscreen themselves (which raced and threw "only a single
+// offscreen document" errors).
+// Pause/resume or idle-timeout changes made in the popup/dashboard apply at once
+// (before, they waited for the next tab event or the 1-minute alarm).
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes.settings) return;
+  serialized(async () => {
+    const s = await getSettings();
+    try { chrome.idle.setDetectionInterval(Math.max(15, s.idleTimeout || 60)); } catch (e) {}
+    await resync();
+  });
 });
+
+let creatingPlayer = null;
+async function ensurePlayerDoc() {
+  try {
+    if (!chrome.offscreen) return false;
+    if (chrome.offscreen.hasDocument && await chrome.offscreen.hasDocument()) return true;
+    if (!creatingPlayer) {
+      creatingPlayer = chrome.offscreen.createDocument({
+        url: 'offscreen.html',
+        reasons: ['AUDIO_PLAYBACK'],
+        justification: 'Keep WebWell music playing when the new tab is closed.'
+      }).catch(() => {}).finally(() => { creatingPlayer = null; });
+    }
+    await creatingPlayer;
+    return true;
+  } catch (e) { return false; }
+}
 
 // Dashboard/popup ask for the live session so "right now" is accurate.
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'ww-ensure-player') {
+    ensurePlayerDoc().then(ok => sendResponse({ ok }));
+    return true;
+  }
   if (msg && msg.type === 'webwell-live') {
     loadSession().then(() => {
       const live = current.domain && current.startedAt
@@ -297,4 +335,4 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // true state immediately (rather than trusting the optimistic defaults until
 // the next alarm tick) so a tab event arriving first can't start a phantom
 // session in an unfocused/idle window.
-resync().catch(() => {});
+serialized(resync);

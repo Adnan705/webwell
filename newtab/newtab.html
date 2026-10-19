@@ -4,13 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New Tab</title>
-<link rel="stylesheet" href="newtab.css">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/plus-jakarta-sans-latin-400-normal.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/plus-jakarta-sans-latin-600-normal.woff2">
+<script src="landmarks.js"></script>
+<script src="boot.js"></script>
+<link rel="stylesheet" href="newtab.css?v=1.6.60">
 </head>
-<body data-theme="dusk">
+<body>
 
   <!-- Animated minimal gradient background -->
   <div class="bg" aria-hidden="true">
     <div class="bg-photo hidden" id="bgPhoto"></div>
+    <div class="bg-photo hidden" id="bgPhotoB"></div>
     <div class="shade hidden" id="bgShade"></div>
     <div class="blob b1"></div>
     <div class="blob b2"></div>
@@ -21,9 +26,6 @@
 
   <!-- Top bar -->
   <header class="topbar">
-    <div class="ww-mini" id="wwMini" title="Today's WebWell stats">
-      <span class="dot"></span><span id="wwMiniText">…</span>
-    </div>
     <nav class="links">
       <a href="#" id="dashLink">Dashboard</a>
       <a href="#" id="settingsLink">Settings</a>
@@ -38,10 +40,11 @@
       <input id="bmUrl" type="text" placeholder="Paste a link…" autocomplete="off" spellcheck="false">
       <button id="bmAddBtn">Add</button>
     </div>
+    <div class="bm-err hidden" id="bmErr">Already in your dock</div>
 
-    <div class="clock" id="clock">--:--</div>
-    <div class="date" id="date">&nbsp;</div>
-    <h1 class="greet" id="greet">&nbsp;</h1>
+    <div class="clock" id="clock"></div>
+    <div class="date" id="date"></div>
+    <h1 class="greet" id="greet"></h1>
 
     <!-- Focus: ask -->
     <div class="focus-ask hidden" id="focusAsk">
@@ -62,7 +65,8 @@
 
   <!-- Bottom-left: today's tasks -->
   <aside class="tasks" id="tasksPanel">
-    <p class="label">Today's tasks</p>
+    <p class="label">Today's tasks <span class="task-count" id="taskCount"></span></p>
+    <div class="task-progress"><i id="taskBar"></i></div>
     <ul class="task-list" id="taskList"></ul>
     <div class="task-add">
       <input id="taskInput" type="text" maxlength="120" placeholder="Add something important…" autocomplete="off">
@@ -81,9 +85,9 @@
       </div>
       <button class="lm-shuffle" id="lmShuffle" title="New background">↻</button>
     </div>
-    <div class="lm-credit">Written &amp; Developed by Adnan · Photos: Wikimedia Commons</div>
+    <div class="lm-credit">Written &amp; Developed by Adnan · Photos: Wikimedia Commons · <span id="wwVer"></span></div>
   </div>
-  <div class="credit" id="plainCredit">Written &amp; Developed by Adnan</div>
+  <div class="credit" id="plainCredit">Written &amp; Developed by Adnan · <span id="wwVer2"></span></div>
 
   <!-- First-run name prompt -->
   <div class="name-overlay hidden" id="nameOverlay">
@@ -93,8 +97,49 @@
     </div>
   </div>
 
-<script src="../lib/time.js"></script>
-<script src="../lib/categories.js"></script>
-<script src="newtab.js"></script>
+  <!-- Music widget -->
+  <div class="music" id="musicWidget">
+    <div class="music-mini" id="musicMini">
+      <button class="disc-btn" id="cdBtn" title="Play / pause">
+        <span class="disc-ring"></span>
+        <span class="disc-art" id="cdDisc"><img id="discArtImg" src="img/lofi-disc.webp" alt="Lofi artwork"></span>
+        <span class="disc-play" id="discPlay">▶</span>
+      </button>
+      <button class="mm-open" id="mmOpen" title="Open player">
+        <span class="mm-title" id="mmTitle">Lofi Focus Radio</span>
+        <span class="mm-sub" id="mmSub">Tap play to start</span>
+      </button>
+    </div>
+    <div class="music-card hidden" id="musicCard">
+      <div class="music-tabs">
+        <button class="music-tab active" data-mtab="radio">Radio</button>
+        <button class="music-tab" data-mtab="soundcloud">SoundCloud</button>
+        <button class="music-close" id="musicClose" title="Close">✕</button>
+      </div>
+      <div class="music-pane" id="mtab-radio">
+        <div class="music-stations" id="musicStations"></div>
+      </div>
+      <div class="music-pane hidden" id="mtab-soundcloud">
+        <div class="music-yt-row">
+          <input id="scSearch" type="text" placeholder="Search songs, artists…" autocomplete="off" spellcheck="false">
+          <button id="scGo">Search</button>
+        </div>
+        <div class="sc-results" id="scResults"></div>
+        <div class="music-yt-row sc-link-row">
+          <input id="scUrl" type="text" placeholder="…or paste a SoundCloud link" autocomplete="off" spellcheck="false">
+          <button id="scSave">Load</button>
+        </div>
+        <a class="music-yt-open hidden" id="scOpen" href="#" target="_blank" rel="noopener">Open in SoundCloud ↗</a>
+      </div>
+      <div class="music-now">
+        <button class="music-play" id="musicPlay" title="Play / pause">▶</button>
+        <span class="music-title" id="musicTitle">Pick a station to start</span>
+      </div>
+    </div>
+  </div>
+
+<script src="../lib/time.js?v=1.6.60"></script>
+<script src="newtab.js?v=1.6.60"></script>
+<script src="music.js?v=1.6.60"></script>
 </body>
 </html>

@@ -1,6 +1,13 @@
+/* Bundled fonts (no Google Fonts request) */
+@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url("../fonts/inter-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:url("../fonts/inter-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url("../fonts/inter-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:url("../fonts/inter-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:800;font-display:swap;src:url("../fonts/inter-latin-800-normal.woff2") format("woff2")}
 :root{
   --bg:#f4f4f6; --card:#ffffff; --ink:#16161a; --mut:#8b8b94; --faint:#b9b9c2;
   --acc:#e8604c; --acc-deep:#cf4c38; --acc-soft:#fdeee8;
+  --hover:#f2f2f5;
   --line:#ececf0;
   --good:#1a9e6b; --good-soft:#e3f5ec;
   --warn:#e8932f; --warn-soft:#fdf2df;
@@ -11,11 +18,12 @@
 }
 body.dark{
   --bg:#121215; --card:#1c1c21; --ink:#f2f2f4; --mut:#9a9aa3; --faint:#5c5c64;
-  --acc-soft:#3a2320; --line:#2a2a31;
+  --acc-soft:#3a2320; --line:#2a2a31; --hover:#2a2a31;
   --good-soft:#123b2e; --warn-soft:#3d2f18; --bad-soft:#3d211c;
   --shadow:0 2px 14px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box;margin:0;padding:0}
+button,input,select,textarea{font-family:inherit}
 body{font-family:"Inter",-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
   min-height:100vh;-webkit-font-smoothing:antialiased}
 ::selection{background:var(--acc-soft)}
@@ -204,7 +212,7 @@ select.cat{padding:8px 12px;border-radius:999px;border:1px solid var(--line);bac
   color:var(--ink);font-size:12px;font-family:inherit}
 
 /* trends */
-.trend-svg{width:100%;height:auto}
+.trend-svg{width:100%;height:auto;display:block;overflow:visible}
 .grid{display:grid;gap:16px}
 .g4{grid-template-columns:repeat(4,1fr)}
 
@@ -395,6 +403,16 @@ body.dark .leg-item.sel{background:var(--acc)}
 /* biggest drain card */
 .drain-site { font-size: 17px; font-weight: 700; margin-top: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drain-logo { width: 26px; height: 26px; border-radius: 7px; flex: none; }
+/* support view */
+.support-wrap { max-width: 520px; margin: 48px auto; text-align: center; padding: 44px 36px; }
+.support-emoji { font-size: 52px; }
+.support-wrap h3 { margin: 14px 0 8px; font-size: 21px; }
+.support-wrap .sub-mut { line-height: 1.65; }
+.bmc-official { display: inline-block; margin-top: 22px; border: 0; padding: 0; background: none; cursor: pointer;
+  transition: transform .12s ease; font-family: inherit; }
+.bmc-official img { display: block; width: 230px; height: auto; }
+.bmc-official:hover { transform: translateY(-2px); }
+.nav .nav-cup { width: 22px; height: 22px; display: block; }
 
 /* streak tooltip */
 .streak-tip {
@@ -446,38 +464,55 @@ body.dark .streak-tip { background: #fff; color: #111; }
 .user-menu { animation: menuIn 0.18s cubic-bezier(.3,1.2,.5,1); transform-origin: top right; }
 @keyframes menuIn { from { opacity: 0; transform: translateY(-6px) scale(0.97); } }
 
-/* calendar popup */
+/* calendar popup — anchored under the button; grid can no longer overflow the card */
 .cal-pop {
-  position: fixed; z-index: 95; width: 264px;
-  background: var(--card); border: 1px solid var(--line); border-radius: 18px;
-  box-shadow: 0 18px 50px rgba(22,22,30,0.18); padding: 14px;
-  animation: menuIn 0.18s cubic-bezier(.3,1.2,.5,1); transform-origin: top left;
+  position: fixed; z-index: 9999; width: 288px; max-width: calc(100vw - 24px);
+  background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+  box-shadow: 0 22px 60px rgba(22,22,30,.22); padding: 16px;
+  transform-origin: top center; animation: calIn .18s cubic-bezier(.2,.9,.3,1.15);
 }
-.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal-pop.closing { animation: calOut .12s ease forwards; pointer-events: none; }
+@keyframes calIn { from { opacity: 0; transform: translateY(-6px) scale(.96); } }
+@keyframes calOut { to { opacity: 0; transform: translateY(-4px) scale(.97); } }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .cal-head b { font-size: 13.5px; }
 .cal-head button {
-  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line);
+  width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line);
   background: var(--card); color: var(--ink); font-size: 16px; cursor: pointer; line-height: 1;
+  transition: background .12s, transform .12s;
 }
 .cal-head button:hover { background: var(--hover); }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-head button:active { transform: scale(.92); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
 .cal-wd { font-size: 10px; font-weight: 700; color: var(--faint); text-align: center; padding: 4px 0; text-transform: uppercase; }
 .cal-d {
-  aspect-ratio: 1; border: 0; background: transparent; color: var(--ink);
-  font-size: 12.5px; border-radius: 50%; cursor: pointer; position: relative;
-  display: flex; align-items: center; justify-content: center;
+  width: 100%; min-width: 0; height: 34px; padding: 0; border: 0; background: transparent; color: var(--ink);
+  font: inherit; font-size: 12.5px; border-radius: 50%; cursor: pointer; position: relative;
+  display: flex; align-items: center; justify-content: center; transition: background .12s, transform .12s;
 }
 .cal-d.empty { cursor: default; }
-.cal-d:not(.empty):hover { background: var(--hover); }
+.cal-d:not(.empty):not(:disabled):hover { background: var(--hover); transform: scale(1.08); }
+.cal-d.future, .cal-d:disabled { color: var(--faint); opacity: .45; cursor: default; }
 .cal-d.has::after {
   content: ""; position: absolute; bottom: 4px; width: 4px; height: 4px;
   border-radius: 50%; background: var(--acc);
 }
-.cal-d.today { border: 1.5px solid var(--acc); }
-.cal-d.sel { background: var(--ink); color: #fff; font-weight: 700; }
-.cal-d.sel.has::after { background: #fff; }
+.cal-d.today { box-shadow: inset 0 0 0 1.5px var(--acc); }
+.cal-d.sel { background: var(--ink); color: var(--card); font-weight: 700; }
+.cal-d.sel.has::after { background: var(--card); }
 .cal-today {
-  width: 100%; margin-top: 10px; padding: 9px; border-radius: 12px; border: 0;
-  background: var(--acc-soft); color: var(--acc-deep); font-size: 12.5px; font-weight: 700; cursor: pointer;
+  width: 100%; margin-top: 12px; padding: 10px; border-radius: 12px; border: 0;
+  background: var(--acc-soft); color: var(--acc-deep); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  transition: filter .12s, transform .12s;
 }
-.cal-today:hover { filter: brightness(0.97); }
+.cal-today:hover { filter: brightness(.97); }
+.cal-today:active { transform: scale(.98); }
+
+/* keyboard focus (was missing everywhere) */
+:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+input:focus-visible, select:focus-visible { outline-offset: 0; }
+
+/* respect the OS "reduce motion" setting */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; transition-duration: .001ms !important; }
+}

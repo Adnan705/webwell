@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WebWell — Daily Browser Monitor</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="dashboard.css">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-400-normal.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-600-normal.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-700-normal.woff2">
+<link rel="stylesheet" href="dashboard.css?v=1.6.60">
 </head>
 <body>
 <div class="app">
@@ -17,6 +17,7 @@
     <button class="nav" data-view="trends" title="Trends">📈</button>
     <button class="nav" data-view="ask" title="Ask AI">✨</button>
     <div class="rail-spacer"></div>
+    <button class="nav" data-view="support" title="Support"><img class="nav-cup" src="img/bmc-cup.png" alt="Support"></button>
     <button class="nav" data-view="settings" title="Settings">⚙️</button>
   </aside>
 
@@ -147,6 +148,7 @@
     <section id="view-sites" class="view hidden"></section>
     <section id="view-trends" class="view hidden"></section>
     <section id="view-ask" class="view hidden"></section>
+    <section id="view-support" class="view hidden"></section>
     <section id="view-settings" class="view hidden"></section>
 
     <footer class="credit">Written &amp; Developed by <b>Adnan</b> · Private by design — AI features only send your question and a stats summary to Google</footer>
@@ -163,10 +165,10 @@
   </aside>
 </div>
 
-<script src="../lib/time.js"></script>
-<script src="../lib/categories.js"></script>
-<script src="../lib/charts.js"></script>
-<script src="../lib/ai.js"></script>
-<script src="dashboard.js"></script>
+<script src="../lib/time.js?v=1.6.60"></script>
+<script src="../lib/categories.js?v=1.6.60"></script>
+<script src="../lib/charts.js?v=1.6.60"></script>
+<script src="../lib/ai.js?v=1.6.60"></script>
+<script src="dashboard.js?v=1.6.60"></script>
 </body>
 </html>

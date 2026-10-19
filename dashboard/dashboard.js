@@ -1,21 +1,20 @@
 // WebWell dashboard.
 'use strict';
 
-// MV3's content-security-policy blocks inline onerror handlers, so broken
-// favicon images fall through an icon-source chain via a capture-phase error
-// listener instead (resource errors don't bubble, but they do trigger capture
-// listeners). Images opt in with data-domain + data-si="0"; each failure
-// advances to the next entry of iconSources(domain), hiding only when all fail.
+// MV3's content-security-policy blocks inline onerror handlers, so a site icon
+// that fails to load is hidden through a capture-phase listener (resource errors
+// don't bubble, but they do trigger capture listeners).
 document.addEventListener('error', e => {
   const t = e.target;
-  if (!t || t.tagName !== 'IMG' || !t.dataset.domain) return;
-  evictIconProbe(t.dataset.domain);
-  const sources = iconSources(t.dataset.domain);
-  const next = parseInt(t.dataset.si || '0', 10) + 1;
-  if (next >= sources.length) { t.style.display = 'none'; return; }
-  t.dataset.si = String(next);
-  t.src = sources[next];
+  if (t && t.tagName === 'IMG' && t.dataset && t.dataset.domain) t.style.visibility = 'hidden';
 }, true);
+
+// ---------------------------------------------------------------------------
+// Support link: your Buy Me a Coffee page.
+// *** REPLACE the URL below with Adnan's real BMC page once it's created ***
+// e.g. const SUPPORT_URL = 'https://www.buymeacoffee.com/adnan';
+// ---------------------------------------------------------------------------
+const SUPPORT_URL = 'https://www.buymeacoffee.com/webwell';
 
 // ---------------------------------------------------------------------------
 // Bug reports: paste your Google Form link or GitHub Issues URL here.
@@ -33,6 +32,15 @@ let siteFilter = 'all', siteQuery = '', siteRange = 'day', trendDays = 14;
 function isTodayKey(k) { return k === dayKey(Date.now()); }
 
 function rangeDayKeys(anchorKey, type) {
+  // FIX: 'month' is now the calendar month containing the anchor day (1st..last),
+  // matching its label and the ‹ › month stepping. It used to be a rolling 30 days.
+  if (type === 'month') {
+    const a = new Date(anchorKey + 'T12:00:00');
+    const dim = new Date(a.getFullYear(), a.getMonth() + 1, 0).getDate();
+    const out = [];
+    for (let d = 1; d <= dim; d++) out.push(dayKey(new Date(a.getFullYear(), a.getMonth(), d, 12).getTime()));
+    return out;
+  }
   const n = type === 'day' ? 1 : type === 'week' ? 7 : type === 'month' ? 30 : 365;
   const keys = [];
   for (let i = n - 1; i >= 0; i--) {
@@ -211,7 +219,7 @@ function renderActivity(entries, data) {
   const max = Math.max.apply(null, entries.map(e => e.secs).concat([1]));
   document.getElementById('actList').innerHTML = list.length ? list.map(e =>
     '<div class="act-item">' +
-    '<img data-domain="' + esc(e.domain) + '" data-si="0" src="' + iconSources(e.domain)[0] + '" alt="">' +
+    iconImg(e.domain, 24) +
     '<div style="min-width:0;flex:none;width:34%"><div class="a-t">' + esc(e.domain) + '</div>' +
     '<div class="a-s">' + e.visits + ' visits · ' + CATEGORY_META[e.cat].label + '</div></div>' +
     '<div class="act-bar"><div style="width:' + Math.max(3, Math.round(e.secs / max * 100)) + '%;background:' + CATEGORY_META[e.cat].color + '"></div></div>' +
@@ -220,10 +228,15 @@ function renderActivity(entries, data) {
     : '<div class="empty">' + (entries.length ? 'No websites match.' : 'Nothing tracked this day.') + '</div>';
 }
 
+let overviewSeq = 0;
 async function renderOverview() {
   const AW = animateWidgets; animateWidgets = false;
+  // FIX: rapid clicks/typing started overlapping renders; a slower, older one
+  // could finish last and paint stale numbers. Only the newest render may paint.
+  const seq = ++overviewSeq;
   const data = await getRangeData();
   const cats = await getCategories();
+  if (seq !== overviewSeq) return;
   const entries = entriesOf(data, cats);
   const score = scoreOf(entries);
   const ct = catTotals(entries);
@@ -233,11 +246,18 @@ async function renderOverview() {
 
   // previous-period delta (yesterday / previous 7 days / previous 30 days)
   const allD = (await storeGet(['days'])).days || {};
-  const pn = viewRange === 'day' ? 1 : viewRange === 'week' ? 7 : 30;
+  if (seq !== overviewSeq) return;
+  const pn = viewRange === 'day' ? 1 : 7;
   let prevTotal = 0;
-  for (let i = 0; i < pn; i++) {
-    const d = new Date(viewingKey + 'T12:00:00'); d.setDate(d.getDate() - pn - i);
-    prevTotal += ((allD[dayKey(d.getTime())] || {}).total || 0);
+  if (viewRange === 'month') {
+    const a = new Date(viewingKey + 'T12:00:00');
+    const prevAnchor = dayKey(new Date(a.getFullYear(), a.getMonth() - 1, 15, 12).getTime());
+    for (const k of rangeDayKeys(prevAnchor, 'month')) prevTotal += ((allD[k] || {}).total || 0);
+  } else {
+    for (let i = 0; i < pn; i++) {
+      const d = new Date(viewingKey + 'T12:00:00'); d.setDate(d.getDate() - pn - i);
+      prevTotal += ((allD[dayKey(d.getTime())] || {}).total || 0);
+    }
   }
   const delta = data.total - prevTotal;
   const vsLabel = viewRange === 'day' ? 'vs yesterday' : viewRange === 'week' ? 'vs previous week' : 'vs previous month';
@@ -280,9 +300,8 @@ async function renderOverview() {
     document.getElementById('drainSite').textContent = drain.domain;
     const logo = document.getElementById('drainLogo');
     logo.dataset.domain = drain.domain;
-    logo.dataset.si = '0';
-    logo.style.display = '';
-    logo.src = iconSources(drain.domain)[0];
+    logo.style.visibility = '';
+    logo.src = faviconUrl(drain.domain, 26);
     logo.alt = drain.domain;
     countUp(document.getElementById('drainTime'), drain.secs, fmtDur);
     document.getElementById('drainSub').textContent =
@@ -295,8 +314,7 @@ async function renderOverview() {
   }
 
   // streak — last 13 days
-  const r = await storeGet(['days']);
-  const allDays = r.days || {};
+  const allDays = allD; // FIX: was a 3rd/4th redundant read of the same 'days' object
   const last13 = [];
   for (let i = 12; i >= 0; i--) {
     const dd = new Date(viewingKey + 'T12:00:00'); dd.setDate(dd.getDate() - i);
@@ -357,12 +375,11 @@ async function renderOverview() {
   document.getElementById('rhythmSub').textContent = peakV > 0 ? fmtDur(peakV) + ' at peak' : 'no hourly data';
 
   // insights
-  document.getElementById('insights').innerHTML = await insightsHtml(entries, data, ydata, cats);
+  document.getElementById('insights').innerHTML = await insightsHtml(entries, data, ydata, cats, viewRange, rnoun);
 
   // forecast — slump + golden hour from the last 14 days
   try {
-    const fr = await storeGet(['days']);
-    const f = computeForecast(fr.days || {}, cats);
+    const f = computeForecast(allD, cats);
     const fb = document.getElementById('forecastBody');
     if (fb) {
       if (f.daysUsed < 3 || (f.slumpHour < 0 && f.goldenHour < 0)) {
@@ -390,15 +407,17 @@ function statCard(label, num, cap, extra) {
     '<div class="cap">' + cap + '</div>' + (extra || '') + '</div>';
 }
 
-async function insightsHtml(entries, data, ydata, cats) {
+async function insightsHtml(entries, data, ydata, cats, range, rnoun) {
   const out = [];
+  const per = range === 'day' ? 'today' : 'this ' + rnoun; // FIX: text always said "today"
+  range = range || 'day'; rnoun = rnoun || 'day';
   if (!entries.length) return '<div class="empty">Browse a little and insights will appear here.</div>';
 
   const top = entries[0];
   const topDistracting = entries.find(e => e.cat === 'distracting');
   if (topDistracting && topDistracting.secs >= 15 * 60) {
     out.push(warn('⚠️', '<b>' + esc(topDistracting.domain) + '</b> ate <b>' + fmtDur(topDistracting.secs) + '</b> — ' +
-      pct(topDistracting.secs, data.total) + '% of your browsing today. That is your biggest time sink.'));
+      pct(topDistracting.secs, data.total) + '% of your browsing ' + per + '. That is your biggest time sink.'));
   }
   const topProd = entries.find(e => e.cat === 'productive');
   if (topProd && topProd.secs >= 20 * 60) {
@@ -410,7 +429,7 @@ async function insightsHtml(entries, data, ydata, cats) {
   if (late >= 30 * 60) out.push(warn('🌙', '<b>' + fmtDur(late) + '</b> of browsing happened late at night (11pm–4am).'));
   // new sites vs yesterday
   const yDomains = new Set(Object.keys(ydata.domains || {}));
-  const fresh = entries.filter(e => !yDomains.has(e.domain) && e.secs >= 5 * 60);
+  const fresh = range === 'day' ? entries.filter(e => !yDomains.has(e.domain) && e.secs >= 5 * 60) : [];
   if (fresh.length) out.push(info('🆕', '<b>' + fresh.length + '</b> new site' + (fresh.length > 1 ? 's' : '') +
     ' crossed 5 minutes today: ' + fresh.slice(0, 3).map(e => '<b>' + esc(e.domain) + '</b>').join(', ') + '.'));
   // peak hour
@@ -421,11 +440,11 @@ async function insightsHtml(entries, data, ydata, cats) {
   const ct = catTotals(entries);
   const dShare = pct(ct.distracting, data.total);
   if (dShare >= 40 && data.total >= 60 * 60) {
-    out.push(warn('🚨', '<b>' + dShare + '%</b> of today went to distracting sites. Consider a daily limit — set one in the Websites tab.'));
+    out.push(warn('🚨', '<b>' + dShare + '%</b> of ' + per + ' went to distracting sites. Consider a daily limit — set one in the Websites tab.'));
   } else if (dShare < 20 && data.total >= 60 * 60) {
-    out.push(info('✅', 'Only <b>' + dShare + '%</b> went to distractions. Focused day — keep it up.'));
+    out.push(info('✅', 'Only <b>' + dShare + '%</b> went to distractions. Focused ' + rnoun + ' — keep it up.'));
   }
-  if (!out.length) out.push(info('💡', '<b>' + esc(top.domain) + '</b> leads today at ' + fmtDur(top.secs) + ' across ' + top.visits + ' visits.'));
+  if (!out.length) out.push(info('💡', '<b>' + esc(top.domain) + '</b> leads ' + per + ' at ' + fmtDur(top.secs) + ' across ' + top.visits + ' visits.'));
   return out.join('');
 }
 function warn(ic, html) { return '<div class="insight warn"><span class="ic">' + ic + '</span><span>' + html + '</span></div>'; }
@@ -511,7 +530,7 @@ async function openDayModal(key) {
       : 'No browsing recorded this day.') + '</div>' +
     entries.map((e, i) =>
       '<div class="modal-row' + (i === 0 ? ' top' : '') + '">' +
-      '<img data-domain="' + esc(e.domain) + '" data-si="0" src="' + iconSources(e.domain)[0] + '" alt="">' +
+      iconImg(e.domain, 20) +
       '<span class="m-dom">' + esc(e.domain) + '</span>' +
       '<span class="m-bar"><i style="width:' + Math.max(4, Math.round(e.secs / max * 100)) + '%;background:' + CATEGORY_META[e.cat].color + '"></i></span>' +
       '<span class="m-time">' + fmtDur(e.secs) + '</span>' +
@@ -556,7 +575,7 @@ async function renderSites() {
   let entries = entriesOf(agg, cats);
   if (siteFilter !== 'all') entries = entries.filter(e => e.cat === siteFilter);
   if (siteQuery) entries = entries.filter(e => e.domain.includes(siteQuery));
-  const rangeName = { day: 'Today', week: 'This week', month: 'This month', year: 'This year', all: 'All time' }[siteRange];
+  const rangeName = { day: 'Today', week: 'Last 7 days', month: 'This month', year: 'Last 365 days', all: 'All time' }[siteRange];
 
   el.innerHTML =
     '<div class="card"><h3>All websites — ' + esc(rangeName) + '</h3>' +
@@ -576,7 +595,7 @@ async function renderSites() {
       '<table class="sites"><thead><tr><th>Website</th><th>Time</th><th>Visits</th><th>Category</th>' +
       (isDay ? '<th>Daily limit</th>' : '') + '</tr></thead><tbody>' +
       entries.map(e =>
-        '<tr><td><div class="site-cell"><img data-domain="' + esc(e.domain) + '" data-si="0" src="' + iconSources(e.domain)[0] + '">' +
+        '<tr><td><div class="site-cell">' + iconImg(e.domain, 22) +
         esc(e.domain) + '</div></td>' +
         '<td class="num">' + fmtDur(e.secs) + '</td>' +
         '<td class="num">' + e.visits + '</td>' +
@@ -595,7 +614,11 @@ async function renderSites() {
       : '<div class="sub-mut" style="margin-top:10px">Total across ' + entries.length + ' sites: <b>' + fmtDur(agg.total) + '</b></div>') +
     '</div>';
 
-  document.getElementById('siteSearch').addEventListener('input', e => { siteQuery = e.target.value.toLowerCase(); renderSites().then(() => keepFocus('siteSearch')); });
+  document.getElementById('siteSearch').addEventListener('input', e => {
+    siteQuery = e.target.value.toLowerCase();
+    clearTimeout(renderSites._t);
+    renderSites._t = setTimeout(() => renderSites().then(() => keepFocus('siteSearch')), 180);
+  });
   document.querySelectorAll('#rangeSegSites button').forEach(b =>
     b.addEventListener('click', () => { siteRange = b.dataset.r; renderSites(); }));
   document.querySelectorAll('#catSeg button').forEach(b => b.addEventListener('click', () => { siteFilter = b.dataset.c; renderSites(); }));
@@ -642,7 +665,8 @@ async function renderTrends() {
   const total = list.reduce((a, d) => a + d.total, 0);
   const avg = list.length ? Math.round(total / list.length) : 0;
   const best = list.reduce((a, d) => d.total > a.total ? d : a, list[0]);
-  const scores = list.map(d => scoreOf(d.entries));
+  // FIX: days with no browsing used to count as score 0 and dragged the average down.
+  const scores = list.filter(d => d.total > 0).map(d => scoreOf(d.entries));
   const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 
   el.innerHTML =
@@ -656,14 +680,14 @@ async function renderTrends() {
     statCard('Heaviest day', fmtDur(best.total), best.full, '') +
     statCard('Avg. score', avgScore + '/100', scoreVerdict(avgScore), '') +
     '</div>' +
-    svgTrend(list) +
+    svgTrend(list, (document.getElementById('view-trends').clientWidth || 0) - 48) +
     '</div>' +
     '<div class="card" style="margin-top:16px"><h3>Day by day</h3>' +
     '<table class="sites"><thead><tr><th>Day</th><th>Screen time</th><th>Top site</th><th>Score</th></tr></thead><tbody>' +
     list.slice().reverse().map(d => {
       const top = d.entries[0];
       return '<tr><td><b>' + d.full + '</b></td><td class="num">' + fmtDur(d.total) + '</td>' +
-        '<td>' + (top ? '<div class="site-cell"><img data-domain="' + esc(top.domain) + '" data-si="0" src="' + iconSources(top.domain)[0] + '">' + esc(top.domain) +
+        '<td>' + (top ? '<div class="site-cell">' + iconImg(top.domain, 22) + esc(top.domain) +
         ' <span class="num" style="color:var(--mut)">· ' + fmtDur(top.secs) + '</span></div>' : '—') + '</td>' +
         '<td class="num">' + scoreOf(d.entries) + '</td></tr>';
     }).join('') + '</tbody></table></div>';
@@ -709,10 +733,12 @@ async function mountChat(rootEl) {
   const goBtn = document.getElementById(uid + 'go');
   if (goBtn) goBtn.addEventListener('click', () => { closeAiDrawer(); showView('settings'); });
 
+  let busy = false;
   const send = async (text) => {
     const q = (text || '').trim();
-    if (!q) return;
+    if (!q || busy) return;
     if (!hasKey) { toast('Add your Gemini API key in Settings → AI features first.'); return; }
+    busy = true;
     input.value = '';
     pushMsg('user', q);
     const typing = document.createElement('div');
@@ -736,6 +762,7 @@ async function mountChat(rootEl) {
         ? 'No API key set — add it in Settings → AI features.'
         : 'Hmm, that didn\'t work (' + err.message + '). Check your key in Settings → AI.');
     }
+    busy = false;
   };
 
   document.getElementById(uid + 'send').addEventListener('click', () => send(input.value));
@@ -784,7 +811,8 @@ async function shareWeek() {
     week.push({ d, total: dd.total || 0, entries: entriesOf(dd, cats) });
   }
   const total = week.reduce((a, w) => a + w.total, 0);
-  const avgScore = Math.round(week.reduce((a, w) => a + scoreOf(w.entries), 0) / 7);
+  const activeWeek = week.filter(w => w.total > 0);
+  const avgScore = activeWeek.length ? Math.round(activeWeek.reduce((a, w) => a + scoreOf(w.entries), 0) / activeWeek.length) : 0;
   let p = 0, x = 0;
   const siteSecs = {};
   for (const w of week) for (const e of w.entries) {
@@ -889,6 +917,23 @@ async function shareWeek() {
   toast('Report card downloaded — share it anywhere.');
 }
 
+/* ---------------- SUPPORT ---------------- */
+function renderSupport() {
+  document.getElementById('view-support').innerHTML =
+    '<div class="card support-wrap">' +
+    '<div class="support-emoji">☕</div>' +
+    '<h3>WebWell is free, forever</h3>' +
+    '<div class="sub-mut">No accounts, no tracking, no paywalls — your data never leaves this device. ' +
+    'If WebWell helps you stay focused, consider buying me a coffee. It keeps the project brewing.</div>' +
+    '<button class="bmc-official" id="bmcBtn" title="Buy me a coffee"><img src="img/bmc-button.png" alt="Buy me a coffee"></button>' +
+    '<div style="margin-top:18px"><a class="link-coral" href="https://github.com/Adnan705/webwell" target="_blank" rel="noopener">or star it on GitHub →</a></div>' +
+    '<div class="sub-mut" style="margin-top:22px;font-size:11.5px">Written &amp; Developed by Adnan</div>' +
+    '</div>';
+  document.getElementById('bmcBtn').addEventListener('click', () => {
+    window.open(SUPPORT_URL, '_blank', 'noopener');
+  });
+}
+
 /* ---------------- SETTINGS ---------------- */
 async function renderSettings() {
   const el = document.getElementById('view-settings');
@@ -896,7 +941,7 @@ async function renderSettings() {
   const p = Object.assign({ name: '', theme: 'dusk', bgMode: 'photos', bgPick: null, pic: '' },
     (await storeGet(['profile'])).profile || {});
   const profPicHtml = p.pic
-    ? '<img src="' + p.pic + '" alt="Profile">'
+    ? '<img src="' + esc(p.pic) + '" alt="Profile">'
     : esc((p.name || 'W').charAt(0).toUpperCase());
   el.innerHTML =
     '<div class="card"><h3>Profile</h3>' +
@@ -967,8 +1012,10 @@ async function renderSettings() {
     '<div class="card" style="margin-top:16px"><h3>Your data</h3>' +
     setRow('Export data', 'Download everything WebWell has recorded as JSON.',
       '<button class="btn ghost" id="exportBtn">Export JSON</button>') +
-    setRow('Clear all data', 'Permanently delete every recorded day. This cannot be undone.',
-      '<button class="btn danger" id="clearBtn">Delete everything</button>') +
+    setRow('Delete browsing history', 'Permanently delete every recorded day, daily limits and AI chat history. Your name, bookmarks, tasks, settings and API key are kept.',
+      '<button class="btn danger" id="clearHistBtn">Delete history</button>') +
+    setRow('Reset WebWell completely', 'Erase everything WebWell stores: history, profile, bookmarks, tasks, settings and your API key. This cannot be undone.',
+      '<button class="btn danger" id="clearBtn">Reset everything</button>') +
     '</div>' +
     '<div class="card" style="margin-top:16px"><h3>How it works</h3>' +
     '<div style="font-size:13px;color:var(--mut);line-height:1.7">' +
@@ -1072,7 +1119,8 @@ async function renderSettings() {
     updateAvatar(); renderSettings();
   });
   document.getElementById('exportBtn').addEventListener('click', async () => {
-    const r = await storeGet(['days', 'categories', 'limits', 'settings']);
+    const r = await storeGet(['days', 'categories', 'limits', 'settings', 'profile', 'ntBookmarks', 'tasks']);
+    if (r.profile && r.profile.pic) r.profile = Object.assign({}, r.profile, { pic: '' }); // keep the file small
     const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -1080,11 +1128,15 @@ async function renderSettings() {
     a.click();
     toast('Export downloaded.');
   });
+  document.getElementById('clearHistBtn').addEventListener('click', async () => {
+    if (!confirm('Delete your browsing history, daily limits and AI chat? Your profile, bookmarks, tasks, settings and API key will be kept. This cannot be undone.')) return;
+    await chrome.storage.local.remove(['days', 'limits', 'aiChat', 'notifiedLimits', 'notifiedMilestones', 'forecastNudge', 'wwSession']);
+    toast('Browsing history deleted.'); renderAll();
+  });
   document.getElementById('clearBtn').addEventListener('click', async () => {
-    if (confirm('Delete ALL WebWell data? This cannot be undone.')) {
-      await chrome.storage.local.clear();
-      toast('All data deleted.'); renderAll();
-    }
+    if (!confirm('Reset WebWell completely? This erases ALL data, including your profile, bookmarks, tasks and API key. This cannot be undone.')) return;
+    await chrome.storage.local.clear();
+    toast('Everything was reset.'); renderAll();
   });
 }
 
@@ -1093,20 +1145,55 @@ function setRow(t, d, control) {
 }
 
 /* ---------------- CALENDAR POPUP ---------------- */
+// Anchored under the calendar button (it used to be a centred modal whose grid
+// overflowed its card). Month changes re-draw in place — no flicker, no re-fetch.
 let calAnchor = null;
+let calDays = {};
 
-function toggleCalendar() {
-  const existing = document.getElementById('calPop');
-  if (existing) { existing.remove(); return; }
-  calAnchor = new Date(viewingKey + 'T12:00:00');
-  calAnchor.setDate(1);
-  renderCalendar();
+function closeCalendar() {
+  const pop = document.getElementById('calPop');
+  if (!pop) return;
+  pop.classList.add('closing');
+  setTimeout(() => pop.remove(), 120);
+  const btn = document.getElementById('goToday');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
-async function renderCalendar() {
-  const old = document.getElementById('calPop');
-  if (old) old.remove();
-  const days = (await storeGet(['days'])).days || {};
+async function toggleCalendar() {
+  const existing = document.getElementById('calPop');
+  if (existing) { closeCalendar(); return; }
+  calAnchor = new Date(viewingKey + 'T12:00:00');
+  calAnchor.setDate(1);
+  calDays = (await storeGet(['days'])).days || {};
+  const pop = document.createElement('div');
+  pop.className = 'cal-pop';
+  pop.id = 'calPop';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', 'Choose a day');
+  document.body.appendChild(pop);
+  drawCalendar();
+  positionCalendar();
+  const btn = document.getElementById('goToday');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+}
+
+function positionCalendar() {
+  const pop = document.getElementById('calPop');
+  const btn = document.getElementById('goToday');
+  if (!pop || !btn) return;
+  const r = btn.getBoundingClientRect();
+  const w = pop.offsetWidth || 288;
+  let left = r.left + r.width / 2 - w / 2;
+  left = Math.max(12, Math.min(left, window.innerWidth - w - 12));
+  let top = r.bottom + 10;
+  if (top + pop.offsetHeight > window.innerHeight - 12) top = Math.max(12, window.innerHeight - pop.offsetHeight - 12);
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+}
+
+function drawCalendar() {
+  const pop = document.getElementById('calPop');
+  if (!pop) return;
   const y = calAnchor.getFullYear(), m = calAnchor.getMonth();
   const monthName = calAnchor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   const firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // Monday-first
@@ -1115,47 +1202,37 @@ async function renderCalendar() {
   for (let i = 0; i < firstDow; i++) cells += '<span class="cal-d empty"></span>';
   for (let dd = 1; dd <= dim; dd++) {
     const k = dayKey(new Date(y, m, dd, 12).getTime());
-    const has = ((days[k] || {}).total || 0) > 0;
-    const cls = 'cal-d' + (has ? ' has' : '') + (isTodayKey(k) ? ' today' : '') +
+    const has = ((calDays[k] || {}).total || 0) > 0;
+    const future = k > dayKey(Date.now());
+    const cls = 'cal-d' + (has ? ' has' : '') + (isTodayKey(k) ? ' today' : '') + (future ? ' future' : '') +
       (k === viewingKey && viewRange === 'day' ? ' sel' : '');
-    cells += '<button class="' + cls + '" data-k="' + k + '">' + dd + '</button>';
+    cells += '<button class="' + cls + '" data-k="' + k + '"' + (future ? ' disabled' : '') + '>' + dd + '</button>';
   }
-  const pop = document.createElement('div');
-  pop.className = 'cal-pop';
-  pop.id = 'calPop';
   pop.innerHTML =
-    '<div class="cal-head"><button id="calPrev" title="Previous month">‹</button><b>' + esc(monthName) + '</b>' +
-    '<button id="calNext" title="Next month">›</button></div>' +
+    '<div class="cal-head"><button id="calPrev" aria-label="Previous month">‹</button><b>' + esc(monthName) + '</b>' +
+    '<button id="calNext" aria-label="Next month">›</button></div>' +
     '<div class="cal-grid">' +
     ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(wd => '<span class="cal-wd">' + wd + '</span>').join('') +
     cells + '</div>' +
     '<button class="cal-today" id="calToday">Jump to today</button>';
-  const btn = document.getElementById('goToday');
-  const rc = btn.getBoundingClientRect();
-  pop.style.top = (rc.bottom + 10) + 'px';
-  pop.style.left = Math.max(12, rc.left - 90) + 'px';
-  document.body.appendChild(pop);
 
-  const nav = delta => { calAnchor.setMonth(calAnchor.getMonth() + delta); renderCalendar(); };
+  const nav = delta => { calAnchor.setMonth(calAnchor.getMonth() + delta); drawCalendar(); };
   pop.querySelector('#calPrev').addEventListener('click', e => { e.stopPropagation(); nav(-1); });
   pop.querySelector('#calNext').addEventListener('click', e => { e.stopPropagation(); nav(1); });
   pop.querySelectorAll('.cal-d[data-k]').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
-    viewingKey = b.dataset.k;
-    viewRange = 'day';
-    animateWidgets = true;
-    pop.remove();
-    renderAll();
+    viewingKey = b.dataset.k; viewRange = 'day'; animateWidgets = true;
+    closeCalendar(); renderAll();
   }));
   pop.querySelector('#calToday').addEventListener('click', e => {
     e.stopPropagation();
-    viewingKey = dayKey(Date.now());
-    viewRange = 'day';
-    animateWidgets = true;
-    pop.remove();
-    renderAll();
+    viewingKey = dayKey(Date.now()); viewRange = 'day'; animateWidgets = true;
+    closeCalendar(); renderAll();
   });
 }
+
+window.addEventListener('resize', positionCalendar);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCalendar(); });
 
 /* ---------------- shell ---------------- */
 function dayTitle() {
@@ -1182,7 +1259,7 @@ async function updateAvatar() {
   const el = document.querySelector('.user .avatar');
   if (!el) return;
   if (prof.pic) {
-    el.innerHTML = '<img src="' + prof.pic + '" alt="Profile">';
+    el.innerHTML = '<img src="' + esc(prof.pic) + '" alt="Profile">';
   } else {
     el.textContent = (prof.name || 'W').charAt(0).toUpperCase();
   }
@@ -1219,6 +1296,27 @@ function toast(msg) {
   setTimeout(() => t.remove(), 2200);
 }
 
+// Only the visible view is rendered; the others render the first time you open
+// them (or again after the data changes). Before, every tab was rebuilt on every
+// change, including Trends charts and Settings you weren't looking at.
+let activeView = 'overview';
+let booted = false;
+const renderedViews = new Set();
+const VIEW_RENDERERS = {
+  overview: () => renderOverview(),
+  sites: () => renderSites(),
+  trends: () => renderTrends(),
+  ask: () => renderAsk(),
+  settings: () => renderSettings(),
+  support: () => { renderSupport(); }
+};
+async function renderView(name) {
+  const fn = VIEW_RENDERERS[name];
+  if (!fn) return;
+  renderedViews.add(name);
+  await fn();
+}
+
 async function renderAll() {
   const hdt = document.getElementById('heroDayTitle');
   if (hdt) hdt.textContent = rangeLabel();
@@ -1226,16 +1324,23 @@ async function renderAll() {
   document.querySelectorAll('#rangeSeg button').forEach(b => b.classList.toggle('active', b.dataset.r === viewRange));
   await updatePill();
   await updateAvatar();
-  await renderOverview(); await renderSites(); await renderTrends(); await renderAsk(); await renderSettings();
-  // Background pass: upgrade every site icon to the highest-res version found.
-  upgradeAllIcons();
+  renderedViews.clear();          // data changed: every view is stale…
+  await renderView(activeView);   // …but only the visible one is rebuilt now
 }
 
 function showView(name) {
-  document.querySelectorAll('.nav').forEach(x => x.classList.toggle('active', x.dataset.view === name));
-  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
   const target = document.getElementById('view-' + name);
-  if (target) target.classList.remove('hidden');
+  if (!target) return;
+  activeView = name;
+  document.querySelectorAll('.nav').forEach(x => {
+    const on = x.dataset.view === name;
+    x.classList.toggle('active', on);
+    if (on) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current');
+  });
+  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+  target.classList.remove('hidden');
+  window.scrollTo(0, 0);
+  if (booted && !renderedViews.has(name)) renderView(name);
 }
 
 document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
@@ -1251,7 +1356,7 @@ document.getElementById('nextDay').addEventListener('click', () => { animateWidg
 document.getElementById('goToday').addEventListener('click', e => { e.stopPropagation(); toggleCalendar(); });
 document.addEventListener('click', e => {
   const pop = document.getElementById('calPop');
-  if (pop && !pop.contains(e.target) && !e.target.closest('#goToday')) pop.remove();
+  if (pop && !pop.contains(e.target) && !e.target.closest('#goToday')) closeCalendar();
 });
 document.querySelectorAll('#rangeSeg button').forEach(b => b.addEventListener('click', () => {
   viewRange = b.dataset.r;
@@ -1262,8 +1367,8 @@ document.getElementById('drainLimit').addEventListener('click', () => {
   if (lastDrainDomain) siteQuery = lastDrainDomain;
   siteRange = 'day';
   siteFilter = 'all';
+  renderedViews.delete('sites');   // force a fresh render with the new filters
   goView('sites');
-  renderSites();
 });
 
 // profile menu
@@ -1314,21 +1419,16 @@ document.getElementById('splitFoot').addEventListener('click', () => {
   const el = document.getElementById('activityCard');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 });
-function goView(name) {
-  document.querySelectorAll('.nav').forEach(x => x.classList.toggle('active', x.dataset.view === name));
-  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-  const target = document.getElementById('view-' + name);
-  if (target) target.classList.remove('hidden');
-}
+const goView = showView; // was an exact copy of showView
 document.querySelectorAll('.split-block.clickable').forEach(b =>
   b.addEventListener('click', () => filterActivity(b.dataset.cat)));
 document.getElementById('goTrends').addEventListener('click', () => goView('trends'));
 document.getElementById('goSites').addEventListener('click', () => goView('sites'));
+let actSearchT = null;
 document.getElementById('actSearch').addEventListener('input', e => {
   actQuery = e.target.value.toLowerCase();
-  renderOverview();
-  const i = document.getElementById('actSearch');
-  i.focus(); i.setSelectionRange(i.value.length, i.value.length);
+  clearTimeout(actSearchT); // FIX: every keystroke re-ran the whole overview (many storage reads)
+  actSearchT = setTimeout(renderOverview, 180);
 });
 document.querySelectorAll('.fchip').forEach(b => b.addEventListener('click', () => {
   actCat = b.dataset.c;
@@ -1338,8 +1438,8 @@ document.querySelectorAll('.fchip').forEach(b => b.addEventListener('click', () 
 document.getElementById('globalSearch').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   siteQuery = e.target.value.trim().toLowerCase();
+  renderedViews.delete('sites');
   goView('sites');
-  renderSites();
 });
 
 document.getElementById('aiFab').addEventListener('click', () => {
@@ -1351,4 +1451,19 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeAiDrawer();
 });
 
-applyTheme().then(renderAll);
+applyTheme().then(renderAll).then(() => { booted = true; });
+
+
+// Keep "today" live: refresh the overview every 30 s while the tab is visible,
+// and immediately when you come back to it. Skipped while you are typing.
+function liveRefresh() {
+  if (document.hidden || !booted || activeView !== 'overview') return;
+  if (!(viewRange === 'day' || viewRange === 'week') || !isTodayKey(viewingKey)) return;
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+  if (document.getElementById('calPop')) return;
+  animateWidgets = false;
+  renderOverview();
+}
+setInterval(liveRefresh, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) liveRefresh(); });
