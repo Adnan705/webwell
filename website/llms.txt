@@ -1,0 +1,24 @@
+# WebWell
+
+> WebWell is a free browser extension for Google Chrome and Brave. It replaces the new tab page with a calm dashboard (clock, a daily focus, tasks, landmark photos and music), adds focus sessions with a timer and sound, can block distracting or adult sites when the user turns that on, and tracks screen time privately on the user's own device. No account, no ads, no tracking, open source (MIT).
+
+Status: heading to the Chrome Web Store. Until then it can be installed from GitHub with "Load unpacked" in chrome://extensions or brave://extensions.
+
+## Key facts
+- Price: free. There is no paid plan, trial or account.
+- Privacy: browsing statistics are stored only in the browser's local storage on the user's device. Nothing is sent to a WebWell server.
+- Browsers: Google Chrome and Brave on desktop. Other Chromium browsers may work but are not officially supported. Firefox and Safari are not supported.
+- Maker: Adnan, an independent developer.
+- Contact: info.adnanak@gmail.com
+
+## Features
+- New tab: clock, daily focus, tasks, quick links, landmark photos that change daily.
+- Music: Spotify (official embed), SoundCloud, offline rain/noise/wave sounds, lofi radio; heart a song to save it.
+- Focus sessions: full-screen timer with calming sound; distracting sites are blocked until the session ends.
+- Insights: daily productivity score, time per website, streaks, 24-hour rhythm. Only the active tab is counted.
+- Protect: adult-content filter, short-video blocker (Shorts, Reels, TikTok), custom block list, mindful pause, parent PIN. All off until the user switches them on.
+
+## Links
+- Website: https://webwell.app/
+- Source code: https://github.com/Adnan705/webwell
+- FAQ: https://webwell.app/#faq

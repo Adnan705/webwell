@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
+  <url>
+    <loc>https://webwell.app/</loc>
+    <lastmod>2026-10-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://webwell.app/media/shot-newtab-hero.webp</image:loc>
+      <image:title>The WebWell new tab</image:title>
+      <image:caption>A calm new tab with a clock, today's focus and a compact music player over a landmark photo.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://webwell.app/media/shot-dashboard.webp</image:loc>
+      <image:title>The WebWell dashboard</image:title>
+      <image:caption>Productivity score, time per website, streaks and a 24-hour rhythm.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://webwell.app/media/shot-protect.webp</image:loc>
+      <image:title>WebWell Protect</image:title>
+      <image:caption>Adult-content filter, short-video blocker, mindful pause and parent PIN.</image:caption>
+    </image:image>
+    <video:video>
+      <video:thumbnail_loc>https://webwell.app/media/hero-poster-1920.webp</video:thumbnail_loc>
+      <video:title>WebWell: a 45-second tour</video:title>
+      <video:description>A short tour of WebWell: the calm new tab, music, focus sessions, insights and Protect.</video:description>
+      <video:content_loc>https://webwell.app/media/hero-1080.mp4</video:content_loc>
+      <video:duration>44</video:duration>
+      <video:publication_date>2026-10-20</video:publication_date>
+      <video:family_friendly>yes</video:family_friendly>
+    </video:video>
+  </url>
+</urlset>
