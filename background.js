@@ -1,6 +1,6 @@
 // WebWell background service worker: tracks active-tab time per domain.
 'use strict';
-importScripts('lib/time.js', 'lib/categories.js', 'lib/ai.js');
+importScripts('lib/time.js', 'lib/categories.js', 'lib/ai.js', 'lib/protect.js');
 
 // ---------------------------------------------------------------------------
 // MV3 service workers are killed ~30s after the last event, which wipes ALL
@@ -174,7 +174,10 @@ chrome.idle.onStateChanged.addListener((state) => serialized(async () => {
 
 // ---- periodic heartbeat: re-establish truth, flush, check limits ----
 chrome.alarms.onAlarm.addListener((alarm) => serialized(async () => {
+  if (alarm.name === 'lockin-end') { await finishLockinPhase(); return; }
   if (alarm.name !== 'webwell-tick') return;
+  try { await updateBadge(); } catch (e) {}
+  try { await expirePauseAllows(); } catch (e) {}
   await resync(); // restarts the session if the worker was killed mid-session
   await flush();  // banks the elapsed time
   // Each check is isolated: one throwing must not skip the rest this minute.
@@ -272,6 +275,8 @@ chrome.runtime.onInstalled.addListener((details) => serialized(async () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
   }
   await resync();
+  syncProtectRules();
+  scheduleLockin();
 }));
 
 chrome.runtime.onStartup.addListener(() => serialized(async () => {
@@ -279,6 +284,8 @@ chrome.runtime.onStartup.addListener(() => serialized(async () => {
   chrome.idle.setDetectionInterval(settings.idleTimeout);
   chrome.alarms.create('webwell-tick', { periodInMinutes: 1 });
   await resync();
+  syncProtectRules();
+  scheduleLockin();
 }));
 
 // Only the service worker can reliably create the offscreen music player.
@@ -288,13 +295,24 @@ chrome.runtime.onStartup.addListener(() => serialized(async () => {
 // Pause/resume or idle-timeout changes made in the popup/dashboard apply at once
 // (before, they waited for the next tab event or the 1-minute alarm).
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local' || !changes.settings) return;
+  if (area !== 'local') return;
+  // Blocking follows its settings, the focus-session state and the user's categories.
+  if (changes.protect || changes.lockin || changes.categories) syncProtectRules();
+  if (changes.lockin) scheduleLockin();
+  if (!changes.settings) return;
   serialized(async () => {
     const s = await getSettings();
     try { chrome.idle.setDetectionInterval(Math.max(15, s.idleTimeout || 60)); } catch (e) {}
     await resync();
   });
 });
+
+// The "all sites" permission is requested from a page; rules that needed it
+// (redirects, header changes, the short-video script) start working now.
+if (chrome.permissions && chrome.permissions.onAdded) {
+  chrome.permissions.onAdded.addListener(() => syncProtectRules());
+  chrome.permissions.onRemoved.addListener(() => syncProtectRules());
+}
 
 let creatingPlayer = null;
 async function ensurePlayerDoc() {
@@ -328,8 +346,276 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
     return true;
   }
+  if (msg && msg.type === 'ww-blocked-info') {
+    const tabId = sender.tab && sender.tab.id;
+    lastNavFor(tabId).then(url => sendResponse({ url }));
+    return true;
+  }
+  if (msg && msg.type === 'ww-blocked-hit') {
+    countBlock(String(msg.reason || 'other')).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
+    return true;
+  }
+  if (msg && msg.type === 'ww-pause-continue') {
+    allowAfterPause(String(msg.url || '')).then(ok => sendResponse({ ok }), () => sendResponse({ ok: false }));
+    return true;
+  }
+  if (msg && msg.type === 'ww-protect-sync') {
+    syncProtectRules().then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg && msg.type === 'ww-lockin') {
+    serialized(() => lockinOp(msg)).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
+    return true;
+  }
   return false;
 });
+
+// ===========================================================================
+// Protect: keep Chrome's blocking rules in step with the user's settings.
+// ===========================================================================
+let protectChain = Promise.resolve();
+function syncProtectRules() {
+  protectChain = protectChain.then(applyProtectRules).catch(() => {});
+  return protectChain;
+}
+
+async function applyProtectRules() {
+  const r = await storeGet(['protect', 'lockin', 'categories']);
+  const p = protectState(r.protect);
+  const rules = buildDynamicRules(p, r.lockin, r.categories || {});
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const ours = existing.map(x => x.id).filter(id => id >= 1000 && id < 5000);
+  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: ours, addRules: rules });
+  try {
+    await chrome.declarativeNetRequest.updateEnabledRulesets(
+      p.adult ? { enableRulesetIds: ['adult'] } : { disableRulesetIds: ['adult'] });
+  } catch (e) {}
+  if (!p.pause) {
+    try {
+      const sess = await chrome.declarativeNetRequest.getSessionRules();
+      const ids = sess.map(x => x.id).filter(id => id >= RULE_IDS.pauseAllow);
+      if (ids.length) await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: ids });
+    } catch (e) {}
+  }
+  await syncShortsScript(p);
+}
+
+const SHORTS_SCRIPT_ID = 'ww-shortform';
+const SHORTS_MATCHES = ['https://*.youtube.com/*', 'https://*.instagram.com/*', 'https://*.facebook.com/*', 'https://*.snapchat.com/*'];
+async function syncShortsScript(p) {
+  if (!chrome.scripting) return;
+  let registered = [];
+  try { registered = await chrome.scripting.getRegisteredContentScripts({ ids: [SHORTS_SCRIPT_ID] }); } catch (e) {}
+  let granted = false;
+  try { granted = await chrome.permissions.contains(ALL_URLS); } catch (e) {}
+  const want = shortsScriptNeeded(p) && granted;
+  try {
+    if (want && !registered.length) {
+      await chrome.scripting.registerContentScripts([{
+        id: SHORTS_SCRIPT_ID, js: ['content/shortform.js'], matches: SHORTS_MATCHES,
+        runAt: 'document_start', allFrames: false, persistAcrossSessions: true
+      }]);
+    } else if (!want && registered.length) {
+      await chrome.scripting.unregisterContentScripts({ ids: [SHORTS_SCRIPT_ID] });
+    }
+  } catch (e) {}
+}
+
+// The blocked/pause pages are reached by a redirect, so they ask here which
+// address the tab was trying to open.
+chrome.webNavigation.onBeforeNavigate.addListener(d => {
+  if (d.frameId !== 0 || !/^https?:/.test(d.url)) return;
+  chrome.storage.session.set({ ['nav' + d.tabId]: d.url }).catch(() => {});
+});
+chrome.tabs.onRemoved.addListener(tabId => { chrome.storage.session.remove('nav' + tabId).catch(() => {}); });
+async function lastNavFor(tabId) {
+  if (tabId == null) return '';
+  try { return (await chrome.storage.session.get('nav' + tabId))['nav' + tabId] || ''; } catch (e) { return ''; }
+}
+
+async function countBlock(reason) {
+  const key = dayKey(Date.now());
+  const r = await storeGet(['protectStats']);
+  const stats = r.protectStats || {};
+  const day = stats[key] || {};
+  day[reason] = (day[reason] || 0) + 1;
+  stats[key] = day;
+  const keys = Object.keys(stats).sort();
+  while (keys.length > 60) delete stats[keys.shift()];
+  await storeSet({ protectStats: stats });
+}
+
+// Mindful pause: "Continue" opens the site and lets it through for 10 minutes.
+const PAUSE_ALLOW_MS = 10 * 60 * 1000;
+async function allowAfterPause(url) {
+  const host = domainOf(url);
+  if (!host) return false;
+  const cats = await getCategories();
+  const list = distractingDomains(cats);
+  let d = host, match = null;
+  while (d) {
+    if (list.includes(d)) { match = d; break; }
+    const i = d.indexOf('.');
+    if (i < 0) break;
+    d = d.slice(i + 1);
+  }
+  if (!match) match = host;
+  const sess = await chrome.declarativeNetRequest.getSessionRules();
+  const same = sess.find(x => x.condition && x.condition.requestDomains && x.condition.requestDomains[0] === match);
+  const id = same ? same.id : Math.max(RULE_IDS.pauseAllow - 1, ...sess.map(x => x.id)) + 1;
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds: [id],
+    addRules: [{ id, priority: 50, action: { type: 'allow' },
+      condition: { requestDomains: [match], resourceTypes: ['main_frame'] } }]
+  });
+  const r = await chrome.storage.session.get('pauseAllows');
+  const allows = r.pauseAllows || {};
+  allows[id] = Date.now() + PAUSE_ALLOW_MS;
+  await chrome.storage.session.set({ pauseAllows: allows });
+  return true;
+}
+async function expirePauseAllows() {
+  const r = await chrome.storage.session.get('pauseAllows');
+  const allows = r.pauseAllows || {};
+  const now = Date.now();
+  const gone = Object.keys(allows).filter(id => allows[id] <= now).map(Number);
+  if (!gone.length) return;
+  await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: gone });
+  gone.forEach(id => delete allows[id]);
+  await chrome.storage.session.set({ pauseAllows: allows });
+}
+
+// ===========================================================================
+// Focus sessions: timer state machine. Pages send ops; this is the only
+// writer of `lockin`, so the timer, the badge and blocking always agree.
+//   focus -> (break) -> done      (done = summary shown on the new tab)
+// ===========================================================================
+async function getLockin() { return (await storeGet(['lockin'])).lockin || null; }
+
+function lockinLeft(l) {
+  if (!l) return 0;
+  if (l.pausedLeft != null) return l.pausedLeft;
+  return Math.max(0, (l.endsAt || 0) - Date.now());
+}
+
+async function lockinOp(msg) {
+  const l = await getLockin();
+  const now = Date.now();
+  switch (msg.op) {
+    case 'start': {
+      const mins = Math.max(1, Math.min(240, msg.mins | 0 || LOCKIN_DEFAULTS.mins));
+      await storeSet({ lockin: {
+        phase: 'focus', task: String(msg.task || '').slice(0, 120), mins,
+        breakMins: Math.max(0, Math.min(30, msg.breakMins == null ? LOCKIN_DEFAULTS.breakMins : msg.breakMins | 0)),
+        totalMs: mins * 60000, startedAt: now, endsAt: now + mins * 60000, pausedLeft: null,
+        sound: String(msg.sound || 'none'), block: msg.block !== false
+      } });
+      break;
+    }
+    case 'pause':
+      if (l && l.phase === 'focus' && l.pausedLeft == null) await storeSet({ lockin: Object.assign(l, { pausedLeft: lockinLeft(l), endsAt: null }) });
+      break;
+    case 'resume':
+      if (l && l.pausedLeft != null) await storeSet({ lockin: Object.assign(l, { endsAt: now + l.pausedLeft, pausedLeft: null }) });
+      break;
+    case 'add':
+      if (l && (l.phase === 'focus' || l.phase === 'break')) {
+        const add = 5 * 60000;
+        if (l.pausedLeft != null) l.pausedLeft += add; else l.endsAt += add;
+        l.totalMs = (l.totalMs || 0) + add;
+        await storeSet({ lockin: l });
+      }
+      break;
+    case 'end':        // stop early: keep the minutes actually focused
+      if (l && l.phase === 'focus') await completeFocus(l, Math.max(0, (l.totalMs || 0) - lockinLeft(l)), false);
+      else if (l && l.phase === 'break') await storeSet({ lockin: { phase: 'done', doneMins: l.doneMins || 0, doneAt: now } });
+      break;
+    case 'dismiss':
+      await chrome.storage.local.remove('lockin');
+      break;
+  }
+}
+
+async function completeFocus(l, focusedMs, finished) {
+  const mins = Math.round(focusedMs / 60000);
+  if (mins >= 1) {
+    const key = dayKey(Date.now());
+    const r = await storeGet(['focusLog']);
+    const log = r.focusLog || {};
+    const day = log[key] || { mins: 0, sessions: 0 };
+    day.mins += mins; day.sessions += 1;
+    log[key] = day;
+    const keys = Object.keys(log).sort();
+    while (keys.length > 120) delete log[keys.shift()];
+    await storeSet({ focusLog: log });
+  }
+  stopPlayerSound();
+  const now = Date.now();
+  if (finished && l.breakMins > 0) {
+    chrome.notifications.create('lockin-' + now, {
+      type: 'basic', iconUrl: 'icons/icon128.png', title: 'Session complete',
+      message: mins + ' minutes focused. Take a ' + l.breakMins + '-minute break.'
+    });
+    await storeSet({ lockin: { phase: 'break', task: l.task, mins: l.mins, breakMins: l.breakMins, doneMins: mins,
+      totalMs: l.breakMins * 60000, startedAt: now, endsAt: now + l.breakMins * 60000, pausedLeft: null, block: false } });
+  } else {
+    if (finished) {
+      chrome.notifications.create('lockin-' + now, {
+        type: 'basic', iconUrl: 'icons/icon128.png', title: 'Session complete', message: mins + ' minutes focused. Nice work.'
+      });
+    }
+    await storeSet({ lockin: { phase: 'done', doneMins: mins, doneAt: now } });
+  }
+}
+
+async function finishLockinPhase() {
+  const l = await getLockin();
+  if (!l || !l.endsAt) return;
+  if (l.endsAt - Date.now() > 1500) { scheduleLockin(); return; } // stale alarm
+  if (l.phase === 'focus') {
+    await completeFocus(l, l.totalMs || l.mins * 60000, true);
+  } else if (l.phase === 'break') {
+    chrome.notifications.create('lockin-break-' + Date.now(), {
+      type: 'basic', iconUrl: 'icons/icon128.png', title: 'Break’s over', message: 'Ready for another focus session?'
+    });
+    await storeSet({ lockin: { phase: 'done', doneMins: l.doneMins || 0, doneAt: Date.now() } });
+  }
+}
+
+async function scheduleLockin() {
+  try {
+    await chrome.alarms.clear('lockin-end');
+    const l = await getLockin();
+    if (l && (l.phase === 'focus' || l.phase === 'break') && l.endsAt && l.pausedLeft == null) {
+      chrome.alarms.create('lockin-end', { when: Math.max(Date.now() + 500, l.endsAt) });
+    }
+  } catch (e) {}
+  await updateBadge();
+}
+
+async function updateBadge() {
+  const l = await getLockin();
+  let text = '', color = '#e8553f';
+  if (l && (l.phase === 'focus' || l.phase === 'break')) {
+    text = l.pausedLeft != null ? '||' : Math.max(1, Math.ceil(lockinLeft(l) / 60000)) + 'm';
+    if (l.phase === 'break') color = '#1a9e6b';
+  }
+  try {
+    await chrome.action.setBadgeBackgroundColor({ color });
+    if (chrome.action.setBadgeTextColor) await chrome.action.setBadgeTextColor({ color: '#ffffff' });
+    await chrome.action.setBadgeText({ text });
+  } catch (e) {}
+}
+
+function stopPlayerSound() {
+  const stop = () => {
+    const p = chrome.runtime.sendMessage({ target: 'ww-player', cmd: 'stop-all' });
+    if (p && p.catch) p.catch(() => {});   // no player open: nothing to stop
+  };
+  if (chrome.offscreen && chrome.offscreen.hasDocument) {
+    chrome.offscreen.hasDocument().then(has => { if (has) stop(); }).catch(() => {});
+  } else stop();
+}
 
 // A worker restart re-runs this file with wiped module flags. Refresh the
 // true state immediately (rather than trusting the optimistic defaults until

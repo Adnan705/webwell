@@ -231,9 +231,9 @@ select.cat{padding:8px 12px;border-radius:999px;border:1px solid var(--line);bac
   color:var(--ink);font-size:13px;font-family:inherit}
 .txt-in,.sel-in{padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);
   color:var(--ink);font-size:13px;font-family:inherit;min-width:170px}
-.btn{border:0;background:var(--ink);color:#fff;font-weight:600;font-size:13px;padding:11px 20px;
+.btn{border:0;background:var(--acc);color:#fff;font-weight:600;font-size:13px;padding:11px 20px;
   border-radius:999px;cursor:pointer;font-family:inherit}
-body.dark .btn{background:var(--acc)}
+.btn:hover{background:var(--acc-deep)}
 .btn.ghost{background:transparent;color:var(--acc-deep);border:1.5px solid var(--acc)}
 body.dark .btn.ghost{background:transparent;color:var(--acc);border:1.5px solid var(--acc)}
 .btn.danger{background:var(--bad)}
@@ -314,7 +314,7 @@ body.dark .leg-item.sel{background:var(--acc)}
   .ask-head p{font-size:15px}
 }
 @media(max-width:1280px){
-  .span2{grid-column:span 4}.span3{grid-column:span 6}.span4{grid-column:span 6}.span5{grid-column:span 12}
+  .span2{grid-column:span 4}.span3{grid-column:span 6}.span4{grid-column:span 6}.span5{grid-column:span 12}.span8{grid-column:span 6}
   .hero-right{flex-basis:100%;justify-content:flex-start}
   .ask-head h1{white-space:normal}
 }
@@ -348,15 +348,6 @@ body.dark .leg-item.sel{background:var(--acc)}
 .fchip-stat b{font-weight:700}
 
 /* floating Ask AI button + slide-in drawer */
-#aiFab{
-  position:fixed;right:26px;bottom:26px;z-index:60;
-  width:60px;height:60px;border-radius:50%;border:0;cursor:pointer;
-  background:linear-gradient(135deg,#f4705c,#d6482c);color:#fff;font-size:26px;
-  box-shadow:0 10px 30px rgba(214,72,44,.45),0 2px 8px rgba(0,0,0,.2);
-  transition:transform .2s,box-shadow .2s;
-  display:flex;align-items:center;justify-content:center;
-}
-#aiFab:hover{transform:scale(1.08) rotate(8deg);box-shadow:0 14px 36px rgba(214,72,44,.55)}
 #aiDrawer{
   position:fixed;top:0;right:0;bottom:0;z-index:70;width:min(400px,100vw);
   background:var(--card);border-left:1px solid var(--line);
@@ -403,16 +394,60 @@ body.dark .leg-item.sel{background:var(--acc)}
 /* biggest drain card */
 .drain-site { font-size: 17px; font-weight: 700; margin-top: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .drain-logo { width: 26px; height: 26px; border-radius: 7px; flex: none; }
-/* support view */
-.support-wrap { max-width: 520px; margin: 48px auto; text-align: center; padding: 44px 36px; }
-.support-emoji { font-size: 52px; }
-.support-wrap h3 { margin: 14px 0 8px; font-size: 21px; }
-.support-wrap .sub-mut { line-height: 1.65; }
-.bmc-official { display: inline-block; margin-top: 22px; border: 0; padding: 0; background: none; cursor: pointer;
-  transition: transform .12s ease; font-family: inherit; }
-.bmc-official img { display: block; width: 230px; height: auto; }
-.bmc-official:hover { transform: translateY(-2px); }
-.nav .nav-cup { width: 22px; height: 22px; display: block; }
+/* rail icons */
+.railnav .nav svg { width: 21px; height: 21px; display: block; }
+.insight .ic { display: inline-flex; color: var(--mut); padding-top: 1px; }
+.insight.warn .ic { color: var(--warn); }
+
+/* Locked In card */
+.span8 { grid-column: span 8; }
+.focus-bars { height: 46px; margin-top: 14px; }
+.focus-bars .mb.hot { background: var(--acc); }
+#focusCard .btn-dark { flex: 1; }
+
+/* ---------- Protect view ---------- */
+.protect-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.ph-ico { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; flex: none;
+  background: var(--acc-soft); color: var(--acc-deep); }
+body.dark .ph-ico { color: var(--acc); }
+.ph-ico svg { width: 26px; height: 26px; }
+.ph-text { flex: 1; min-width: 220px; }
+.ph-text h2 { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+.ph-text .sub-mut { font-size: 13px; margin-top: 2px; }
+.ph-stats { display: flex; gap: 28px; }
+.ph-stats div { display: flex; flex-direction: column; }
+.ph-stats b { font-size: 26px; font-weight: 800; letter-spacing: -.8px; font-variant-numeric: tabular-nums; }
+.ph-stats span { font-size: 11.5px; color: var(--mut); }
+.perm-banner { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  margin-top: 16px; padding: 14px 18px; border-radius: 16px; background: var(--warn-soft); font-size: 13px; font-weight: 500; }
+.pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+@media (max-width: 1000px) { .pgrid { grid-template-columns: 1fr; } }
+.pcard { display: flex; flex-direction: column; gap: 14px; }
+.pc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.pc-head h3 { font-size: 15px; margin-bottom: 4px; }
+.pc-head .sub-mut { font-size: 12.5px; line-height: 1.6; max-width: 440px; }
+.pc-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pc-row .seg button { padding: 8px 14px; }
+.pc-foot { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.55; }
+.pchecks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pchecks.off { opacity: .5; }
+.pcheck { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--bg);
+  font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.pcheck input { width: 16px; height: 16px; accent-color: var(--acc); }
+.add-row { display: flex; gap: 8px; }
+.add-row .txt-in { flex: 1; min-width: 0; }
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.site-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border-radius: 999px;
+  background: var(--bg); border: 1px solid var(--line); font-size: 12.5px; font-weight: 600; }
+.site-chip img { width: 16px; height: 16px; border-radius: 4px; }
+.site-chip button { width: 22px; height: 22px; border-radius: 50%; border: 0; background: transparent; color: var(--mut);
+  cursor: pointer; font-size: 11px; display: grid; place-items: center; }
+.site-chip button:hover { background: var(--hover); color: var(--ink); }
+.pin-card { width: min(380px, 94vw); }
+.pin-in { width: 100%; margin-top: 10px; padding: 14px 16px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--ink); font: inherit; font-size: 20px; letter-spacing: .4em; text-align: center; outline: none; }
+.pin-in:focus { border-color: var(--acc); }
+.pin-err { min-height: 18px; margin-top: 8px; font-size: 12px; color: var(--bad); }
 
 /* streak tooltip */
 .streak-tip {
@@ -516,3 +551,28 @@ input:focus-visible, select:focus-visible { outline-offset: 0; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; transition-duration: .001ms !important; }
 }
+
+/* ---------- rail: light, minimal, brand colour ---------- */
+.railnav{width:80px;padding:18px 0;gap:8px}
+.railnav .nav{width:52px;height:52px;border-radius:16px;color:var(--mut);background:none}
+.railnav .nav svg{width:24px;height:24px}
+.railnav .nav[data-view="ask"] svg{width:30px;height:30px}
+.railnav .nav:hover{background:var(--hover);color:var(--ink);transform:none}
+.railnav .nav.active{background:var(--acc);color:#fff;box-shadow:0 6px 16px rgba(232,96,76,.32)}
+body.dark .railnav .nav.active{background:var(--acc);color:#fff;box-shadow:0 6px 16px rgba(232,96,76,.3)}
+/* Protect always carries the brand colour so security reads at a glance */
+.railnav .nav[data-view="protect"]{color:var(--acc);background:var(--acc-soft)}
+.railnav .nav[data-view="protect"]:hover{background:var(--acc-soft);color:var(--acc-deep)}
+.railnav .nav[data-view="protect"].active{background:var(--acc);color:#fff}
+
+/* ---------- Ask AI floating button: brand colour ---------- */
+#aiFab{
+  position:fixed;right:26px;bottom:26px;z-index:60;width:68px;height:68px;border-radius:50%;
+  border:0;cursor:pointer;background:var(--acc);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 24px rgba(232,96,76,.38);
+  transition:transform .2s cubic-bezier(.3,1.3,.5,1),box-shadow .2s,background .2s;
+}
+#aiFab svg{width:46px;height:46px;display:block}
+#aiFab:hover{transform:translateY(-2px);background:var(--acc-deep);box-shadow:0 14px 30px rgba(232,96,76,.46)}
+#aiFab:active{transform:scale(.95)}

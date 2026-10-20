@@ -40,7 +40,7 @@ const store = { get: keys => chrome.storage.local.get(keys) };
 const LANDMARKS = window.WW_LANDMARKS || [];
 const BOOT = window.__WW_BOOT || {};
 
-let profile = { name: '', theme: 'dusk', bgMode: 'photos', bgPick: null, pic: '' };
+let profile = { name: '', theme: 'dusk', bgMode: 'photos', bgPick: null, pic: '', clock24: false };
 let focus = null;   // { date, text, done }
 let tasks = {};     // { [dateKey]: [{ id, text, done }] }
 let today = '';
@@ -54,7 +54,7 @@ let daysData = {};
 function saveBoot() {
   try {
     localStorage.setItem('ww_boot', JSON.stringify({
-      v: 1, theme: profile.theme, bgMode: profile.bgMode, name: profile.name, bgPick: profile.bgPick,
+      v: 1, theme: profile.theme, bgMode: profile.bgMode, name: profile.name, bgPick: profile.bgPick, clock24: !!profile.clock24,
       focus, tasksDate: today, tasks: tasks[today] || [], bookmarks, hidden: bmHidden, auto: autoCache
     }));
   } catch (e) {}
@@ -68,6 +68,7 @@ function hydrateFromBoot() {
   profile.theme = BOOT.theme || 'dusk';
   profile.bgMode = BOOT.bgMode === 'gradient' ? 'gradient' : 'photos';
   profile.bgPick = BOOT.bgPick || null;
+  profile.clock24 = !!BOOT.clock24;
   if (BOOT.focus && BOOT.focus.date === today) focus = BOOT.focus;
   if (BOOT.tasksDate === today && Array.isArray(BOOT.tasks)) tasks[today] = BOOT.tasks;
   bookmarks = Array.isArray(BOOT.bookmarks) ? BOOT.bookmarks : [];
@@ -76,7 +77,7 @@ function hydrateFromBoot() {
 }
 
 function stateSig() {
-  return JSON.stringify([profile.name, profile.theme, profile.bgMode, profile.bgPick, focus,
+  return JSON.stringify([profile.name, profile.theme, profile.bgMode, profile.bgPick, profile.clock24, focus,
     tasks[today] || [], bookmarks, bmHidden]);
 }
 
@@ -119,9 +120,14 @@ function tickClock() {
   }
   // Manual formatting: instant (toLocaleTimeString can stall on first call).
   let h = now.getHours();
-  const ap = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  const t = h + ':' + String(now.getMinutes()).padStart(2, '0') + ' ' + ap;
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  let t;
+  if (profile.clock24) {
+    t = String(h).padStart(2, '0') + ':' + mm;
+  } else {
+    const ap = h >= 12 ? 'PM' : 'AM';
+    t = (h % 12 || 12) + ':' + mm + ' ' + ap;
+  }
   if (t !== lastClockText) { lastClockText = t; $('clock').textContent = t; }
   const wd = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
   const mo = ['January','February','March','April','May','June','July','August','September','October','November','December'][now.getMonth()];
@@ -154,6 +160,14 @@ function maybeAskName() {
 }
 
 /* ---------------- focus ---------------- */
+let focusToday = null;   // { mins, sessions } from the Focus sessions log
+function renderFocusStat() {
+  const el = $('focusStat');
+  if (!el) return;
+  el.textContent = focusToday && focusToday.mins > 0
+    ? fmtDurShort(focusToday.mins * 60) + ' focused today' + (focusToday.sessions > 1 ? ' · ' + focusToday.sessions + ' sessions' : '')
+    : '';
+}
 function renderFocus() {
   const ask = $('focusAsk'), set = $('focusSet');
   if (focus && focus.text) {
@@ -165,6 +179,7 @@ function renderFocus() {
     set.classList.add('hidden');
     ask.classList.remove('hidden');
   }
+  renderFocusStat();
 }
 
 function wireFocus() {
@@ -189,6 +204,8 @@ function wireFocus() {
     $('focusInput').focus();
     await persist({ focus: null });
   });
+  // "Start focusing" opens the focus session sheet with today's focus filled in.
+  $('focusGo').addEventListener('click', () => { if (window.wwOpenFocusSheet) window.wwOpenFocusSheet(); });
 }
 
 /* ---------------- tasks ---------------- */
@@ -269,7 +286,18 @@ async function deleteTask(id) {
   renderTasks();
   await persist({ tasks });
 }
+// Tasks live in a small pill; it opens upward on click and closes on Escape or an outside click.
+function setTasksOpen(open) {
+  $('tasksPanel').classList.toggle('collapsed', !open);
+  $('tasksToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) setTimeout(() => $('taskInput').focus(), 30);
+}
 function wireTasks() {
+  $('tasksToggle').addEventListener('click', () => setTasksOpen($('tasksPanel').classList.contains('collapsed')));
+  document.addEventListener('click', e => {
+    if (!$('tasksPanel').classList.contains('collapsed') && !e.target.closest('#tasksPanel')) setTasksOpen(false);
+  });
+  $('tasksPanel').addEventListener('keydown', e => { if (e.key === 'Escape') { setTasksOpen(false); $('tasksToggle').focus(); } });
   $('taskInput').addEventListener('keydown', async e => {
     if (e.key !== 'Enter') return;
     const v = e.target.value;
@@ -343,6 +371,18 @@ function wireShuffle() {
     profile.bgPick = { date: today, idx: next };
     showLandmark(next, true);
     await persist({ profile });
+  });
+}
+
+/* ---------------- web search ---------------- */
+// chrome.search uses whatever search engine the user picked in their browser.
+function wireSearch() {
+  $('searchForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = $('searchInput').value.trim();
+    if (!text) return;
+    if (chrome.search && chrome.search.query) chrome.search.query({ text, disposition: 'CURRENT_TAB' });
+    else location.href = 'https://www.google.com/search?q=' + encodeURIComponent(text);
   });
 }
 
@@ -505,7 +545,7 @@ function paintAll(first) {
 
   // 1) FIRST PAINT — fully synchronous, from the snapshot.
   hydrateFromBoot();
-  wireFocus(); wireTasks(); wireShuffle(); wireBookmarks(); wireLinks();
+  wireFocus(); wireTasks(); wireShuffle(); wireBookmarks(); wireLinks(); wireSearch();
   paintAll(true);
   document.body.classList.add('ready');
   setInterval(tickClock, 5000);
@@ -518,6 +558,14 @@ function paintAll(first) {
     saveBoot();
     maybeAskName();
   }).catch(() => { maybeAskName(); });
+
+  // Today's focus time, and keep it current when a session finishes in another tab.
+  store.get(['focusLog']).then(r => { focusToday = (r.focusLog || {})[today] || null; renderFocusStat(); }).catch(() => {});
+  try {
+    chrome.storage.onChanged.addListener((c, area) => {
+      if (area === 'local' && c.focusLog) { focusToday = (c.focusLog.newValue || {})[today] || null; renderFocusStat(); }
+    });
+  } catch (e) {}
 
   // 3) History is large — load last; auto-suggested sites fill in when ready.
   store.get(['days']).then(r => {

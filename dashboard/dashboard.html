@@ -7,18 +7,30 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-400-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-600-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-700-normal.woff2">
-<link rel="stylesheet" href="dashboard.css?v=1.6.60">
+<link rel="stylesheet" href="dashboard.css?v=1.7.0">
 </head>
 <body>
 <div class="app">
   <aside class="railnav">
-    <button class="nav active" data-view="overview" title="Overview">📊</button>
-    <button class="nav" data-view="sites" title="Websites">🌐</button>
-    <button class="nav" data-view="trends" title="Trends">📈</button>
-    <button class="nav" data-view="ask" title="Ask AI">✨</button>
+    <button class="nav active" data-view="overview" title="Overview" aria-label="Overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg>
+    </button>
+    <button class="nav" data-view="sites" title="Websites" aria-label="Websites">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.4 2.4 3.6 5.2 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.2-3.6-8.5s1.2-6.1 3.6-8.5z"/></svg>
+    </button>
+    <button class="nav" data-view="trends" title="Trends" aria-label="Trends">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M5 16l4.5-5 3.5 3 6-7"/><path d="M15 7h4v4"/></svg>
+    </button>
+    <button class="nav" data-view="protect" title="Protect" aria-label="Protect">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg>
+    </button>
+    <button class="nav" data-view="ask" title="Ask AI" aria-label="Ask AI">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.4V4.7"/><circle cx="12" cy="3.7" r="1"/><path d="M5.2 12.2a4.8 4.8 0 0 1 4.8-4.8h4a4.8 4.8 0 0 1 4.8 4.8v0a4.8 4.8 0 0 1-4.8 4.8h-2.6L8 20.2V17a4.8 4.8 0 0 1-2.8-4.8z"/><path d="M3.2 11v2.6M20.8 11v2.6"/><rect x="7.8" y="10.1" width="8.4" height="4.2" rx="2.1"/><circle cx="10.3" cy="12.2" r=".6" fill="currentColor" stroke="none"/><circle cx="13.7" cy="12.2" r=".6" fill="currentColor" stroke="none"/></svg>
+    </button>
     <div class="rail-spacer"></div>
-    <button class="nav" data-view="support" title="Support"><img class="nav-cup" src="img/bmc-cup.png" alt="Support"></button>
-    <button class="nav" data-view="settings" title="Settings">⚙️</button>
+    <button class="nav" data-view="settings" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg>
+    </button>
   </aside>
 
   <main>
@@ -133,8 +145,16 @@
           <div class="card-foot"><span class="sub-mut" id="rhythmSub">–</span></div>
         </div>
 
-        <div class="card span12" id="forecastCard">
-          <div class="card-top"><div class="t">Forecast<small>Your patterns, next slump</small></div><span style="font-size:18px">🔮</span></div>
+        <div class="card span4" id="focusCard">
+          <div class="card-top"><div class="t">Focus sessions<small>Time focused</small></div><span class="tag-pill" id="focusDay">Today</span></div>
+          <div class="big-num sm" id="focusMins">–</div>
+          <div class="sub-mut" id="focusSub">–</div>
+          <div class="mini-bars focus-bars" id="focusBars"></div>
+          <div class="card-foot"><button class="btn-dark" id="focusStart">Start focusing</button></div>
+        </div>
+
+        <div class="card span8" id="forecastCard">
+          <div class="card-top"><div class="t">Forecast<small>Your patterns, next slump</small></div><span class="tag-pill">Last 14 days</span></div>
           <div class="forecast-body" id="forecastBody"><span class="sub-mut">Analysing your rhythm…</span></div>
         </div>
       </div>
@@ -147,15 +167,15 @@
 
     <section id="view-sites" class="view hidden"></section>
     <section id="view-trends" class="view hidden"></section>
+    <section id="view-protect" class="view hidden"></section>
     <section id="view-ask" class="view hidden"></section>
-    <section id="view-support" class="view hidden"></section>
     <section id="view-settings" class="view hidden"></section>
 
     <footer class="credit">Written &amp; Developed by <b>Adnan</b> · Private by design — AI features only send your question and a stats summary to Google</footer>
   </main>
 
   <!-- Floating Ask AI button + slide-in chat drawer -->
-  <button id="aiFab" title="Ask WebWell">✨</button>
+  <button id="aiFab" title="Ask WebWell" aria-label="Ask WebWell"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="3.6" r="1.15" fill="currentColor"/><path d="M12 4.6v3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path fill="currentColor" d="M5.4 12.2A4.8 4.8 0 0 1 10.2 7.4h3.6a4.8 4.8 0 0 1 4.8 4.8 4.8 4.8 0 0 1-4.8 4.8h-2.5L8.2 20.3V17A4.8 4.8 0 0 1 5.4 12.2z"/><rect x="3" y="10.6" width="2" height="3.2" rx="1" fill="currentColor"/><rect x="19" y="10.6" width="2" height="3.2" rx="1" fill="currentColor"/><rect x="7.9" y="10" width="8.2" height="4.4" rx="2.2" fill="var(--acc)"/><circle cx="10.4" cy="12.2" r=".75" fill="currentColor"/><circle cx="13.6" cy="12.2" r=".75" fill="currentColor"/></svg></button>
   <aside id="aiDrawer" class="hidden" aria-label="Ask WebWell">
     <div class="drawer-head">
       <div class="drawer-title"><img src="../icons/icon48.png" alt="WebWell"><span>Ask WebWell</span></div>
@@ -165,10 +185,12 @@
   </aside>
 </div>
 
-<script src="../lib/time.js?v=1.6.60"></script>
-<script src="../lib/categories.js?v=1.6.60"></script>
-<script src="../lib/charts.js?v=1.6.60"></script>
-<script src="../lib/ai.js?v=1.6.60"></script>
-<script src="dashboard.js?v=1.6.60"></script>
+<script src="../lib/time.js?v=1.7.0"></script>
+<script src="../lib/categories.js?v=1.7.0"></script>
+<script src="../lib/charts.js?v=1.7.0"></script>
+<script src="../lib/ai.js?v=1.7.0"></script>
+<script src="../lib/protect.js?v=1.7.0"></script>
+<script src="dashboard.js?v=1.7.0"></script>
+<script src="protect-view.js?v=1.7.0"></script>
 </body>
 </html>

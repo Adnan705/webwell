@@ -2,35 +2,46 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="popup.css?v=1.6.60">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebWell</title>
+<link rel="stylesheet" href="popup.css?v=1.7.0">
 </head>
 <body>
   <div class="pop">
-    <header>
-      <div class="brand"><img class="logo" src="../icons/icon48.png" alt="WebWell"><div><strong>WebWell</strong><small id="dateLine"></small></div></div>
-      <div class="head-actions">
-        <button id="pauseBtn" class="icon-btn" title="Pause tracking" aria-label="Pause tracking"></button>
-        <button id="openDash" class="btn">Dashboard</button>
+    <header class="top">
+      <div class="brand">
+        <img class="logo" src="../icons/icon48.png" alt="">
+        <div class="brand-t"><strong>WebWell</strong><small id="dateLine"></small></div>
+      </div>
+      <div class="top-actions">
+        <button class="pill" id="trackPill" title="Pause or resume tracking"></button>
+        <button class="ico-btn" id="openDash" title="Open dashboard" aria-label="Open dashboard"></button>
       </div>
     </header>
-    <div class="card music-pop" id="popMusic">
-      <img id="popArt" class="pop-art" src="../newtab/img/lofi-disc.webp" alt="" width="44" height="44">
-      <div class="pop-meta">
-        <div id="popTitle" class="pop-title">Lofi Focus Radio</div>
-        <div id="popSub" class="pop-sub">Tap play to start</div>
-      </div>
-      <div class="pop-controls">
-        <button id="popPrev" title="Previous" aria-label="Previous">⏮</button>
-        <button id="popToggle" title="Play / pause" aria-label="Play or pause">▶</button>
-        <button id="popNext" title="Next" aria-label="Next">⏭</button>
-      </div>
+
+    <nav class="seg" id="tabs" role="tablist" aria-label="WebWell">
+      <button role="tab" data-tab="today" class="on">Today</button>
+      <button role="tab" data-tab="focus">Focus</button>
+      <button role="tab" data-tab="protect">Protect</button>
+      <button role="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <div class="mini" id="mini" hidden>
+      <img id="miniArt" src="../newtab/img/lofi-disc.webp" alt="">
+      <div class="mini-t"><b id="miniTitle"></b><small id="miniSub"></small></div>
+      <button class="sq" id="miniPrev" title="Previous" aria-label="Previous"></button>
+      <button class="sq main" id="miniToggle" title="Pause or play" aria-label="Pause or play"></button>
+      <button class="sq" id="miniNext" title="Next" aria-label="Next"></button>
+      <button class="sq" id="miniStop" title="Stop and close" aria-label="Stop music"></button>
     </div>
-    <div id="main"></div>
-    <footer>Written &amp; Developed by Adnan</footer>
+
+    <main class="view" id="view" aria-live="polite"></main>
+    <div class="toast" id="toast" role="status"></div>
   </div>
-  <script src="../lib/time.js?v=1.6.60"></script>
-  <script src="../lib/categories.js?v=1.6.60"></script>
-  <script src="../lib/charts.js?v=1.6.60"></script>
-  <script src="popup.js?v=1.6.60"></script>
+
+  <script src="../lib/time.js?v=1.7.0"></script>
+  <script src="../lib/categories.js?v=1.7.0"></script>
+  <script src="../lib/protect.js?v=1.7.0"></script>
+  <script src="popup.js?v=1.7.0"></script>
 </body>
 </html>

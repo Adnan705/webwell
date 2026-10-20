@@ -6,17 +6,21 @@
    "48": "icons/icon48.png"
   },
   "default_popup": "popup/popup.html",
-  "default_title": "WebWell \u2014 today's browsing"
+  "default_title": "WebWell — today's browsing"
  },
  "author": "Written & Developed by Adnan",
  "background": {
   "service_worker": "background.js"
  },
- "description": "Your Digital Wellbeing for the desktop: see which websites take your time, score your productivity, and get warned about your biggest time sinks. Your browsing data stays 100% local \u2014 only features you turn on (AI chat, SoundCloud/radio) use the network.",
+ "description": "Your Digital Wellbeing for the desktop: see where your time goes, lock in with a focus timer, and block adult sites and short videos. Your browsing data stays 100% local.",
  "host_permissions": [
   "https://generativelanguage.googleapis.com/*",
   "https://*.soundcloud.com/*",
-  "https://*.sndcdn.com/*"
+  "https://*.sndcdn.com/*",
+  "https://open.spotify.com/*"
+ ],
+ "optional_host_permissions": [
+  "<all_urls>"
  ],
  "icons": {
   "128": "icons/icon128.png",
@@ -25,7 +29,7 @@
  },
  "manifest_version": 3,
  "minimum_chrome_version": "114",
- "name": "WebWell \u2014 Daily Browser Monitor",
+ "name": "WebWell — Daily Browser Monitor",
  "options_page": "dashboard/dashboard.html",
  "permissions": [
   "tabs",
@@ -34,12 +38,35 @@
   "alarms",
   "notifications",
   "offscreen",
-  "favicon"
+  "favicon",
+  "declarativeNetRequest",
+  "scripting",
+  "webNavigation",
+  "search"
  ],
+ "declarative_net_request": {
+  "rule_resources": [
+   {
+    "id": "adult",
+    "enabled": false,
+    "path": "rules/adult.json"
+   }
+  ]
+ },
  "short_name": "WebWell",
- "version": "1.6.60",
+ "version": "1.7.0",
  "chrome_url_overrides": {
   "newtab": "newtab/newtab.html"
  },
- "web_accessible_resources": []
+ "web_accessible_resources": [
+  {
+   "resources": [
+    "blocked/blocked.html",
+    "blocked/pause.html"
+   ],
+   "matches": [
+    "<all_urls>"
+   ]
+  }
+ ]
 }

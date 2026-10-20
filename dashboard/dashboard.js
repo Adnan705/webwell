@@ -10,13 +10,6 @@ document.addEventListener('error', e => {
 }, true);
 
 // ---------------------------------------------------------------------------
-// Support link: your Buy Me a Coffee page.
-// *** REPLACE the URL below with Adnan's real BMC page once it's created ***
-// e.g. const SUPPORT_URL = 'https://www.buymeacoffee.com/adnan';
-// ---------------------------------------------------------------------------
-const SUPPORT_URL = 'https://www.buymeacoffee.com/webwell';
-
-// ---------------------------------------------------------------------------
 // Bug reports: paste your Google Form link or GitHub Issues URL here.
 // Examples:
 //   const BUG_REPORT_URL = 'https://forms.gle/xxxx';
@@ -374,6 +367,33 @@ async function renderOverview() {
   }).join('');
   document.getElementById('rhythmSub').textContent = peakV > 0 ? fmtDur(peakV) + ' at peak' : 'no hourly data';
 
+  // Focus sessions — focus minutes in the range, a 7-day strip, live session if any
+  try {
+    const fr = await storeGet(['focusLog', 'lockin']);
+    if (seq !== overviewSeq) return;
+    const flog = fr.focusLog || {};
+    let fm = 0, fs = 0;
+    for (const k of rangeDayKeys(viewingKey, viewRange)) { fm += (flog[k] || {}).mins || 0; fs += (flog[k] || {}).sessions || 0; }
+    document.getElementById('focusDay').textContent = rl;
+    document.getElementById('focusMins').textContent = fm ? fmtDurShort(fm * 60) : '0m';
+    const li = fr.lockin;
+    const liveFocus = li && li.phase === 'focus' && rangeDayKeys(viewingKey, viewRange).includes(dayKey(Date.now()));
+    const left = li ? (li.pausedLeft != null ? li.pausedLeft : Math.max(0, (li.endsAt || 0) - Date.now())) : 0;
+    document.getElementById('focusSub').textContent = liveFocus
+      ? 'Focusing now · ' + Math.ceil(left / 60000) + ' min left'
+      : fs ? fs + ' session' + (fs === 1 ? '' : 's') + ' this ' + rnoun : 'No focus sessions this ' + rnoun + ' yet';
+    const fvals = [];
+    for (let i = 6; i >= 0; i--) {
+      const dd = new Date(viewingKey + 'T12:00:00'); dd.setDate(dd.getDate() - i);
+      fvals.push({ k: dayKey(dd.getTime()), m: (flog[dayKey(dd.getTime())] || {}).mins || 0 });
+    }
+    const fmax = Math.max(1, ...fvals.map(v => v.m));
+    document.getElementById('focusBars').innerHTML = fvals.map((v, i) =>
+      '<div class="mb' + (v.m ? ' hot' : '') + (AW ? ' rise' : '') + '" style="height:' + Math.max(6, Math.round(v.m / fmax * 100)) +
+      '%;animation-delay:' + (i * 40) + 'ms" title="' + esc(fullDateLabel(v.k)) + ' — ' + (v.m ? fmtDurShort(v.m * 60) : 'no sessions') + '"></div>').join('');
+    document.getElementById('focusStart').textContent = liveFocus ? 'Open session' : 'Start focusing';
+  } catch (e) { /* focus card is best-effort */ }
+
   // insights
   document.getElementById('insights').innerHTML = await insightsHtml(entries, data, ydata, cats, viewRange, rnoun);
 
@@ -447,8 +467,23 @@ async function insightsHtml(entries, data, ydata, cats, range, rnoun) {
   if (!out.length) out.push(info('💡', '<b>' + esc(top.domain) + '</b> leads ' + per + ' at ' + fmtDur(top.secs) + ' across ' + top.visits + ' visits.'));
   return out.join('');
 }
-function warn(ic, html) { return '<div class="insight warn"><span class="ic">' + ic + '</span><span>' + html + '</span></div>'; }
-function info(ic, html) { return '<div class="insight"><span class="ic">' + ic + '</span><span>' + html + '</span></div>'; }
+// Line icons instead of emoji, so insights match the rest of the UI.
+const INSIGHT_ICONS = {
+  '⚠️': '<path d="M12 4l9 15.5H3z"/><path d="M12 10v4M12 17h.01"/>',
+  '🎯': '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/>',
+  '🌙': '<path d="M19.5 14.5A8 8 0 1 1 9.5 4.5a6.5 6.5 0 0 0 10 10z"/>',
+  '🆕': '<path d="M12 4v16M4 12h16"/>',
+  '📈': '<path d="M4 19h16"/><path d="M5.5 15l4.5-5 3.5 3L19 6.5"/>',
+  '🚨': '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5.5M12 16.5h.01"/>',
+  '✅': '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/>',
+  '💡': '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9V15h7v-1.1A6 6 0 0 0 12 3z"/>'
+};
+function insIcon(ic) {
+  return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+    (INSIGHT_ICONS[ic] || INSIGHT_ICONS['💡']) + '</svg>';
+}
+function warn(ic, html) { return '<div class="insight warn"><span class="ic">' + insIcon(ic) + '</span><span>' + html + '</span></div>'; }
+function info(ic, html) { return '<div class="insight"><span class="ic">' + insIcon(ic) + '</span><span>' + html + '</span></div>'; }
 
 // Buckets behind the sparkline card: 7 days, 4 week-chunks, or 6 calendar months.
 async function sparkBuckets(allD) {
@@ -772,7 +807,7 @@ async function mountChat(rootEl) {
 
 async function renderAsk() {
   const el = document.getElementById('view-ask');
-  el.innerHTML = '<div class="card ask-card"><h3>Ask WebWell <span style="font-size:18px">✨</span></h3>' +
+  el.innerHTML = '<div class="card ask-card"><h3>Ask WebWell</h3>' +
     '<p class="ask-sub">Ask anything about your browsing. The AI only ever sees a short summary of your stats — nothing else leaves this device.</p>' +
     '<div id="askMount"></div></div>';
   await mountChat(document.getElementById('askMount'));
@@ -917,23 +952,6 @@ async function shareWeek() {
   toast('Report card downloaded — share it anywhere.');
 }
 
-/* ---------------- SUPPORT ---------------- */
-function renderSupport() {
-  document.getElementById('view-support').innerHTML =
-    '<div class="card support-wrap">' +
-    '<div class="support-emoji">☕</div>' +
-    '<h3>WebWell is free, forever</h3>' +
-    '<div class="sub-mut">No accounts, no tracking, no paywalls — your data never leaves this device. ' +
-    'If WebWell helps you stay focused, consider buying me a coffee. It keeps the project brewing.</div>' +
-    '<button class="bmc-official" id="bmcBtn" title="Buy me a coffee"><img src="img/bmc-button.png" alt="Buy me a coffee"></button>' +
-    '<div style="margin-top:18px"><a class="link-coral" href="https://github.com/Adnan705/webwell" target="_blank" rel="noopener">or star it on GitHub →</a></div>' +
-    '<div class="sub-mut" style="margin-top:22px;font-size:11.5px">Written &amp; Developed by Adnan</div>' +
-    '</div>';
-  document.getElementById('bmcBtn').addEventListener('click', () => {
-    window.open(SUPPORT_URL, '_blank', 'noopener');
-  });
-}
-
 /* ---------------- SETTINGS ---------------- */
 async function renderSettings() {
   const el = document.getElementById('view-settings');
@@ -968,7 +986,7 @@ async function renderSettings() {
       'Warn me 15 minutes before my usual daily distraction slump (needs a few days of history).',
       '<label class="toggle"><input type="checkbox" id="setForecastNudge" ' + (s.forecastNudge ? 'checked' : '') + '><span class="tk"></span></label>') +
     '</div>' +
-    '<div class="card" style="margin-top:16px"><h3>AI features ✨</h3>' +
+    '<div class="card" style="margin-top:16px"><h3>AI features</h3>' +
     '<div style="font-size:13px;color:var(--mut);line-height:1.7;margin-bottom:4px">' +
     'Ask WebWell answers questions about your habits. It needs a free Gemini key — ' +
     'takes about 2 minutes, no credit card, and the key stays in your browser.' +
@@ -1008,10 +1026,18 @@ async function renderSettings() {
           '<option value="' + t + '"' + ((p.theme || 'dusk') === t ? ' selected' : '') + '>' +
           t.charAt(0).toUpperCase() + t.slice(1) + '</option>').join('') +
       '</select>') +
+    setRow('Clock',
+      'How the time is shown on your new tab.',
+      '<select class="sel-in" id="setClock">' +
+        '<option value="12"' + (p.clock24 ? '' : ' selected') + '>12-hour (3:45 PM)</option>' +
+        '<option value="24"' + (p.clock24 ? ' selected' : '') + '>24-hour (15:45)</option>' +
+      '</select>') +
     '</div>' +
     '<div class="card" style="margin-top:16px"><h3>Your data</h3>' +
-    setRow('Export data', 'Download everything WebWell has recorded as JSON.',
+    setRow('Export data', 'Download everything WebWell has recorded as JSON. Do this before removing or reinstalling the extension: removing it erases its data.',
       '<button class="btn ghost" id="exportBtn">Export JSON</button>') +
+    setRow('Import data', 'Restore a WebWell export. Nothing is overwritten: for days you already have, the larger total is kept.',
+      '<button class="btn ghost" id="importBtn">Import JSON</button><input type="file" id="importFile" accept="application/json,.json" style="display:none">') +
     setRow('Delete browsing history', 'Permanently delete every recorded day, daily limits and AI chat history. Your name, bookmarks, tasks, settings and API key are kept.',
       '<button class="btn danger" id="clearHistBtn">Delete history</button>') +
     setRow('Reset WebWell completely', 'Erase everything WebWell stores: history, profile, bookmarks, tasks, settings and your API key. This cannot be undone.',
@@ -1089,6 +1115,12 @@ async function renderSettings() {
     await storeSet({ profile: prof });
     toast('New tab theme updated.');
   });
+  document.getElementById('setClock').addEventListener('change', async e => {
+    const prof = Object.assign({}, (await storeGet(['profile'])).profile || {});
+    prof.clock24 = e.target.value === '24';
+    await storeSet({ profile: prof });
+    toast(prof.clock24 ? '24-hour clock on.' : '12-hour clock on.');
+  });
   document.getElementById('setBgMode').addEventListener('change', async e => {
     const prof = Object.assign({ bgMode: 'photos' }, (await storeGet(['profile'])).profile || {});
     prof.bgMode = e.target.value;
@@ -1119,7 +1151,8 @@ async function renderSettings() {
     updateAvatar(); renderSettings();
   });
   document.getElementById('exportBtn').addEventListener('click', async () => {
-    const r = await storeGet(['days', 'categories', 'limits', 'settings', 'profile', 'ntBookmarks', 'tasks']);
+    const r = await storeGet(['days', 'categories', 'limits', 'settings', 'profile', 'ntBookmarks', 'ntHidden', 'tasks', 'focusLog', 'lockPrefs']);
+    r.webwellExport = 1;
     if (r.profile && r.profile.pic) r.profile = Object.assign({}, r.profile, { pic: '' }); // keep the file small
     const blob = new Blob([JSON.stringify(r, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -1128,16 +1161,99 @@ async function renderSettings() {
     a.click();
     toast('Export downloaded.');
   });
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const res = await importData(JSON.parse(await file.text()));
+      toast('Imported ' + res.days + ' day' + (res.days === 1 ? '' : 's') + ' of browsing data.');
+      renderAll();
+    } catch (err) { toast('Could not import: ' + err.message); }
+  });
   document.getElementById('clearHistBtn').addEventListener('click', async () => {
     if (!confirm('Delete your browsing history, daily limits and AI chat? Your profile, bookmarks, tasks, settings and API key will be kept. This cannot be undone.')) return;
     await chrome.storage.local.remove(['days', 'limits', 'aiChat', 'notifiedLimits', 'notifiedMilestones', 'forecastNudge', 'wwSession']);
     toast('Browsing history deleted.'); renderAll();
   });
   document.getElementById('clearBtn').addEventListener('click', async () => {
-    if (!confirm('Reset WebWell completely? This erases ALL data, including your profile, bookmarks, tasks and API key. This cannot be undone.')) return;
+    if (!(await requirePin('reset WebWell'))) return;   // reset also switches off every protection
+    if (!confirm('Reset WebWell completely? This erases ALL data, including your profile, bookmarks, tasks, protection settings and API key. This cannot be undone.')) return;
     await chrome.storage.local.clear();
     toast('Everything was reset.'); renderAll();
   });
+}
+
+// Merge a WebWell export into what is stored. Additive: existing values win,
+// except browsing days, where the larger total is kept. Security settings
+// (protection, PIN, API key) are never imported.
+async function importData(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error('that isn\'t a WebWell export.');
+  const cur = await storeGet(['days', 'categories', 'limits', 'settings', 'profile', 'ntBookmarks', 'ntHidden', 'tasks', 'focusLog', 'lockPrefs']);
+  const num = v => (Number.isFinite(v) && v >= 0 ? Math.round(v) : 0);
+  const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
+  const out = {};
+  let dayCount = 0;
+
+  if (isObj(obj.days)) {
+    const days = cur.days || {};
+    for (const k of Object.keys(obj.days)) {
+      const d = obj.days[k];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !isObj(d) || !isObj(d.domains)) continue;
+      const clean = { domains: {}, visits: {}, hourly: {}, total: 0 };
+      for (const dom of Object.keys(d.domains)) {
+        const s = num(d.domains[dom]);
+        if (s && /^[a-z0-9.-]+$/i.test(dom)) { clean.domains[dom.toLowerCase()] = s; clean.total += s; }
+      }
+      for (const dom of Object.keys(isObj(d.visits) ? d.visits : {})) if (clean.domains[dom]) clean.visits[dom] = num(d.visits[dom]);
+      for (let h = 0; h < 24; h++) clean.hourly[h] = num((isObj(d.hourly) ? d.hourly : {})[h]);
+      if (clean.total && (!days[k] || (days[k].total || 0) < clean.total)) { days[k] = clean; dayCount++; }
+    }
+    const keys = Object.keys(days).sort();
+    while (keys.length > 120) delete days[keys.shift()];
+    out.days = days;
+  }
+  if (isObj(obj.categories)) {
+    const ok = {};
+    for (const d of Object.keys(obj.categories)) if (CATEGORY_META[obj.categories[d]] && /^[a-z0-9.-]+$/i.test(d)) ok[d.toLowerCase()] = obj.categories[d];
+    out.categories = Object.assign(ok, cur.categories || {});
+  }
+  if (isObj(obj.limits)) {
+    const ok = {};
+    for (const d of Object.keys(obj.limits)) { const m = num(obj.limits[d]); if (m > 0 && m <= 1440 && /^[a-z0-9.-]+$/i.test(d)) ok[d.toLowerCase()] = m; }
+    out.limits = Object.assign(ok, cur.limits || {});
+  }
+  if (isObj(obj.settings)) {
+    const keep = {};
+    for (const k of ['idleTimeout', 'darkMode', 'dailyGoalMins', 'forecastNudge']) if (k in obj.settings) keep[k] = obj.settings[k];
+    out.settings = Object.assign(keep, cur.settings || {});
+  }
+  if (isObj(obj.profile)) {
+    const keep = {};
+    for (const k of ['name', 'theme', 'bgMode', 'clock24']) if (k in obj.profile) keep[k] = obj.profile[k];
+    out.profile = Object.assign(keep, cur.profile || {});
+  }
+  if (Array.isArray(obj.ntBookmarks)) {
+    const have = cur.ntBookmarks || [];
+    const seen = new Set(have.map(b => String(b.url).toLowerCase()));
+    const add = obj.ntBookmarks.filter(b => b && typeof b.url === 'string' && /^https?:\/\//.test(b.url) && !seen.has(b.url.toLowerCase()))
+      .map(b => ({ id: String(b.id || 'b' + Math.random().toString(36).slice(2, 9)), name: String(b.name || '').slice(0, 80), url: b.url }));
+    out.ntBookmarks = have.concat(add);
+  }
+  if (Array.isArray(obj.ntHidden)) out.ntHidden = [...new Set((cur.ntHidden || []).concat(obj.ntHidden.filter(x => typeof x === 'string')))];
+  if (isObj(obj.tasks)) out.tasks = Object.assign({}, obj.tasks, cur.tasks || {});
+  if (isObj(obj.focusLog)) {
+    const log = cur.focusLog || {};
+    for (const k of Object.keys(obj.focusLog)) {
+      const f = obj.focusLog[k];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(k) && isObj(f) && (!log[k] || (log[k].mins || 0) < num(f.mins))) log[k] = { mins: num(f.mins), sessions: num(f.sessions) };
+    }
+    out.focusLog = log;
+  }
+  if (!Object.keys(out).length) throw new Error('nothing in that file looks like WebWell data.');
+  await storeSet(out);
+  return { days: dayCount };
 }
 
 function setRow(t, d, control) {
@@ -1308,7 +1424,7 @@ const VIEW_RENDERERS = {
   trends: () => renderTrends(),
   ask: () => renderAsk(),
   settings: () => renderSettings(),
-  support: () => { renderSupport(); }
+  protect: () => renderProtect()   // protect-view.js
 };
 async function renderView(name) {
   const fn = VIEW_RENDERERS[name];
@@ -1423,6 +1539,9 @@ const goView = showView; // was an exact copy of showView
 document.querySelectorAll('.split-block.clickable').forEach(b =>
   b.addEventListener('click', () => filterActivity(b.dataset.cat)));
 document.getElementById('goTrends').addEventListener('click', () => goView('trends'));
+document.getElementById('focusStart').addEventListener('click', () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL('newtab/newtab.html#lockin') });
+});
 document.getElementById('goSites').addEventListener('click', () => goView('sites'));
 let actSearchT = null;
 document.getElementById('actSearch').addEventListener('input', e => {
@@ -1451,7 +1570,11 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeAiDrawer();
 });
 
-applyTheme().then(renderAll).then(() => { booted = true; });
+// Start only once every script on the page has run (protect-view.js loads after this file;
+// a deep link such as dashboard.html#protect would otherwise render before it exists).
+function bootDashboard() { applyTheme().then(renderAll).then(() => { booted = true; }); }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootDashboard);
+else bootDashboard();
 
 
 // Keep "today" live: refresh the overview every 30 s while the tab is visible,
