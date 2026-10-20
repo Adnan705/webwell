@@ -545,23 +545,27 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 }
 .cta-wrap { overflow-x: clip; }
 /* one ambient light for the whole page: the same soft coral, amber and pink glow as the closing section,
-   drifting down the page so every section sits in the same atmosphere */
+   drifting down the page so every section sits in the same atmosphere.
+   The hero glow is a single layer at the top; the rest repeat every 2400px with every glow fully inside its tile, so there is no seam. */
 body { position: relative; isolation: isolate; }
 body::before {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background-image:
     radial-gradient(ellipse 820px 520px at 50% 0, color-mix(in srgb, var(--coral) 16%, transparent) 0%, transparent 72%),
     radial-gradient(ellipse 640px 440px at 97% 560px, color-mix(in srgb, #ffc56e 22%, transparent) 0%, transparent 72%),
-    radial-gradient(ellipse 700px 480px at 1% 1300px, color-mix(in srgb, #ff8fa0 16%, transparent) 0%, transparent 72%),
-    radial-gradient(ellipse 720px 480px at 95% 1950px, color-mix(in srgb, var(--coral) 12%, transparent) 0%, transparent 72%);
-  background-size: 100% 2400px; background-repeat: repeat-y;
+    radial-gradient(ellipse 700px 460px at 1% 1060px, color-mix(in srgb, #ff8fa0 16%, transparent) 0%, transparent 72%),
+    radial-gradient(ellipse 720px 460px at 95% 1560px, color-mix(in srgb, var(--coral) 12%, transparent) 0%, transparent 72%),
+    radial-gradient(ellipse 640px 400px at 3% 1960px, color-mix(in srgb, #ffc56e 15%, transparent) 0%, transparent 72%);
+  background-size: 100% 700px, 100% 2400px, 100% 2400px, 100% 2400px, 100% 2400px;
+  background-repeat: no-repeat, repeat-y, repeat-y, repeat-y, repeat-y;
 }
 :root[data-theme="dark"] body::before {
   background-image:
     radial-gradient(ellipse 820px 520px at 50% 0, color-mix(in srgb, var(--coral) 14%, transparent) 0%, transparent 76%),
     radial-gradient(ellipse 640px 440px at 97% 560px, color-mix(in srgb, var(--coral) 6%, transparent) 0%, transparent 76%),
-    radial-gradient(ellipse 700px 480px at 1% 1300px, color-mix(in srgb, var(--coral) 6%, transparent) 0%, transparent 76%),
-    radial-gradient(ellipse 720px 480px at 95% 1950px, color-mix(in srgb, var(--coral) 7%, transparent) 0%, transparent 76%);
+    radial-gradient(ellipse 700px 460px at 1% 1060px, color-mix(in srgb, var(--coral) 6%, transparent) 0%, transparent 76%),
+    radial-gradient(ellipse 720px 460px at 95% 1560px, color-mix(in srgb, var(--coral) 7%, transparent) 0%, transparent 76%),
+    radial-gradient(ellipse 640px 400px at 3% 1960px, color-mix(in srgb, var(--coral) 5%, transparent) 0%, transparent 76%);
 }
 
 .cta-band .lede { color: var(--ink-2); }
