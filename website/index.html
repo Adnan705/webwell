@@ -544,6 +544,26 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     radial-gradient(26% 36% at 78% 62%, color-mix(in srgb, var(--coral) 9%, transparent) 0%, transparent 72%);
 }
 .cta-wrap { overflow-x: clip; }
+/* one ambient light for the whole page: the same soft coral, amber and pink glow as the closing section,
+   drifting down the page so every section sits in the same atmosphere */
+main { position: relative; isolation: isolate; }
+main::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 820px 520px at 50% 0, color-mix(in srgb, var(--coral) 16%, transparent) 0%, transparent 72%),
+    radial-gradient(ellipse 640px 440px at 97% 560px, color-mix(in srgb, #ffc56e 22%, transparent) 0%, transparent 72%),
+    radial-gradient(ellipse 700px 480px at 1% 1300px, color-mix(in srgb, #ff8fa0 16%, transparent) 0%, transparent 72%),
+    radial-gradient(ellipse 720px 480px at 95% 1950px, color-mix(in srgb, var(--coral) 12%, transparent) 0%, transparent 72%);
+  background-size: 100% 2400px; background-repeat: repeat-y;
+}
+:root[data-theme="dark"] main::before {
+  background-image:
+    radial-gradient(ellipse 820px 520px at 50% 0, color-mix(in srgb, var(--coral) 14%, transparent) 0%, transparent 76%),
+    radial-gradient(ellipse 640px 440px at 97% 560px, color-mix(in srgb, var(--coral) 6%, transparent) 0%, transparent 76%),
+    radial-gradient(ellipse 700px 480px at 1% 1300px, color-mix(in srgb, var(--coral) 6%, transparent) 0%, transparent 76%),
+    radial-gradient(ellipse 720px 480px at 95% 1950px, color-mix(in srgb, var(--coral) 7%, transparent) 0%, transparent 76%);
+}
+
 .cta-band .lede { color: var(--ink-2); }
 .cta-band h2 .serif { color: var(--coral); }
 :root[data-theme="dark"] .cta-band .btn-ghost { background: color-mix(in srgb, #fff 7%, transparent); border-color: color-mix(in srgb, #fff 16%, transparent); color: var(--ink); }
@@ -582,7 +602,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 }
 .pic img { width: 100%; height: 100%; object-fit: cover; }
 .fine-left { font-size: var(--fs-xs); color: var(--ink-3); max-width: 38em; }
-.band { background: var(--paper-2); }
+.band { background: color-mix(in srgb, var(--paper-2) 62%, transparent); }
 
 .checks.two { grid-template-columns: 1fr; gap: 14px 40px; }
 @media (min-width: 760px) { .checks.two { grid-template-columns: 1fr 1fr; } }
