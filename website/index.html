@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbfaf9">
 <title>WebWell</title>
-<link rel="preload" as="image" href="media/shot-newtab-hero.webp" type="image/webp" fetchpriority="high">
+<link rel="preload" as="image" href="media/hero-poster.webp" type="image/webp" fetchpriority="high">
 <meta name="description" content="WebWell is a free browser extension for Brave and Chrome: a calm new tab with music and focus sessions, site blocking, and private screen-time tracking.">
 <link rel="icon" href="media/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -578,6 +578,30 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 .shot, .pic, .night-shot { background: var(--paper-2); }
 .shot img, .pic img, .night-shot img, .bento img { opacity: 0; transition: opacity .6s var(--ease); }
 .shot img.ld, .pic img.ld, .night-shot img.ld, .bento img.ld { opacity: 1; }
+
+/* ---------- hero video ---------- */
+.vframe { position: relative; aspect-ratio: 16 / 9; border-radius: 20px; overflow: hidden; background: var(--paper-2);
+  border: 1px solid var(--rule); box-shadow: 0 1px 2px rgba(24,23,28,.06), 0 28px 60px -28px rgba(24,23,28,.35); }
+.vframe video, .vframe .vposter { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.vframe .vposter { transition: opacity .6s var(--ease); }
+.vframe.shown .vposter { opacity: 0; pointer-events: none; }
+.vbig { position: absolute; inset: 0; margin: auto; width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--card); color: var(--ink); border: 1px solid var(--rule); cursor: pointer;
+  box-shadow: 0 1px 2px rgba(24,23,28,.08), 0 18px 40px -16px rgba(24,23,28,.35); transition: transform .25s var(--ease), opacity .3s; }
+.vbig:hover { transform: scale(1.06); }
+.vbig svg { width: 28px; height: 28px; margin-left: 3px; }
+.vframe.running .vbig, .vframe.pending .vbig { opacity: 0; pointer-events: none; }
+.vctl { position: absolute; right: 14px; bottom: 14px; display: none; gap: 8px; opacity: 0; transition: opacity .3s; }
+.vframe.started .vctl { display: flex; }
+.vframe:hover .vctl, .vframe:focus-within .vctl { opacity: 1; }
+@media (hover: none) { .vframe.started .vctl { opacity: 1; } }
+.vctl button { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; color: var(--ink);
+  background: color-mix(in srgb, var(--card) 92%, transparent); border: 1px solid var(--rule); backdrop-filter: blur(6px); }
+.vctl button:hover { border-color: var(--ink-3); }
+.vctl svg { width: 18px; height: 18px; }
+.vbig:focus-visible, .vctl button:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+@media (max-width: 560px) { .vframe { border-radius: 14px; } .vbig { width: 64px; height: 64px; } }
+@media (prefers-reduced-motion: reduce) { .vframe .vposter { transition: none; } }
 </style>
 <noscript><style>.shot img,.pic img,.night-shot img,.bento img{opacity:1!important}</style></noscript></head>
 <body>
@@ -620,29 +644,16 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
       </div>
 
       <div class="stage rise" style="--d:5">
-        <div class="tabs" role="tablist" aria-label="Product views">
-          <button class="tab" role="tab" id="t-newtab" aria-controls="p-newtab" aria-selected="true" data-url="new-tab" data-cap="Your clock, your main focus and your music on a quiet photo. One click to start focusing.">New tab</button>
-          <button class="tab" role="tab" id="t-music" aria-controls="p-music" aria-selected="false" data-url="music" data-cap="Spotify, SoundCloud, offline sounds and radio. Tap the heart and the song is one click away next time.">Music</button>
-          <button class="tab" role="tab" id="t-focus" aria-controls="p-focus" aria-selected="false" data-url="focus" data-cap="A full-screen timer with calming sound. Distracting sites wait until you’re done.">Focus</button>
-          <button class="tab" role="tab" id="t-dash" aria-controls="p-dash" aria-selected="false" data-url="dashboard" data-cap="Your score, time split, biggest drain, streak and week at a glance.">Dashboard</button>
-          <button class="tab" role="tab" id="t-protect" aria-controls="p-protect" aria-selected="false" data-url="protect" data-cap="Adult-content and short-video blockers, a mindful pause, and a parent PIN.">Protect</button>
-        </div>
-        <div class="chip chip-a" aria-hidden="true"><span class="ic"><i></i></span><span><b id="chip-time">24:59</b><small>Focus session</small></span></div>
-        <div class="chip chip-b ok" aria-hidden="true"><span class="ic"><i></i></span><span><b>3 distractions paused</b><small>Protect is on</small></span></div>
-        <div class="frame-glow"><div class="frame">
-          <div class="frame-bar">
-            <div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
-            <div class="btab"><img src="media/logo.png" alt="" width="16" height="16"><span>WebWell</span></div>
-            <div class="url"><span id="url-text">webwell / new-tab</span></div>
-            <div class="frame-spacer"></div>
+        <div class="vframe" id="vframe">
+          <img class="vposter" src="media/hero-poster.webp" alt="WebWell: Meet your calmer new tab. A calm new tab with a clock, your focus for the day and music." width="1280" height="720" fetchpriority="high" decoding="async">
+          <video id="heroVideo" muted playsinline loop preload="none" tabindex="-1" aria-label="A short tour of WebWell: the new tab, music, focus sessions, insights and Protect."></video>
+          <button class="vbig" id="vbig" type="button" aria-label="Play the tour"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></button>
+          <div class="vctl">
+            <button id="vplay" type="button" aria-label="Pause"></button>
+            <button id="vsound" type="button" aria-label="Turn sound on"></button>
           </div>
-          <div class="shot" role="tabpanel" id="p-newtab" aria-labelledby="t-newtab"><img fetchpriority="high" decoding="async" src="media/shot-newtab-hero.webp" alt="The WebWell new tab: a clock, today’s focus with a Start focusing button, a compact music player, and a Tasks pill over a photo of Kirkjufell in Iceland." width="2400" height="1350"></div>
-          <div class="shot" role="tabpanel" id="p-music" aria-labelledby="t-music" hidden><img src="media/shot-newtab-music.webp" alt="The music panel open on the new tab, showing the song and artist, a Save playlist button, and Spotify with suggested playlists." width="2400" height="1350" fetchpriority="low" decoding="async"></div>
-          <div class="shot" role="tabpanel" id="p-focus" aria-labelledby="t-focus" hidden><img src="media/shot-newtab-focus.webp" alt="A focus session in progress: a large timer, the task being worked on, pause and end buttons, and sound choices." width="2400" height="1350" fetchpriority="low" decoding="async"></div>
-          <div class="shot" role="tabpanel" id="p-dash" aria-labelledby="t-dash" hidden><img src="media/shot-dashboard.webp" alt="The WebWell dashboard with productivity score, time split, streak, categories, activity manager and 24-hour rhythm." width="2400" height="1350" fetchpriority="low" decoding="async"></div>
-          <div class="shot" role="tabpanel" id="p-protect" aria-labelledby="t-protect" hidden><img src="media/shot-protect.webp" alt="The Protect page with the adult content filter, short-video blocker, mindful pause, focus-session blocking and parent PIN." width="2400" height="1350" fetchpriority="low" decoding="async"></div>
-        </div></div>
-        <p class="stage-cap" id="stage-cap" aria-live="polite">Your clock, your main focus and your music on a quiet photo. One click to start focusing.</p>
+        </div>
+        <p class="stage-cap" id="stage-cap">A 45-second tour. The sound is off, tap the speaker to hear the music.</p>
       </div>
     </div>
 
@@ -1090,30 +1101,49 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     try { localStorage.setItem("ww-theme", next); } catch (e) {}
   });
 
-  // Product view tabs
-  const tabs = [...document.querySelectorAll(".tab")];
-  const cap = document.getElementById("stage-cap");
-  const urlText = document.getElementById("url-text");
-  function select(tab) {
-    tabs.forEach(t => {
-      const on = t === tab;
-      t.setAttribute("aria-selected", on);
-      t.tabIndex = on ? 0 : -1;
-      document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
-    });
-    cap.textContent = tab.dataset.cap;
-    urlText.textContent = "webwell / " + tab.dataset.url;
-  }
-  tabs.forEach((t, i) => {
-    t.addEventListener("click", () => select(t));
-    t.addEventListener("keydown", e => {
-      const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-      if (!step) return;
-      const next = tabs[(i + step + tabs.length) % tabs.length];
-      next.focus(); select(next);
-    });
-  });
-  select(tabs[0]);
+  // Hero video: the poster shows instantly; the video file only starts downloading once the page has finished loading.
+  (function () {
+    const box = document.getElementById('vframe'); if (!box) return;
+    const v = document.getElementById('heroVideo'), big = document.getElementById('vbig'), pb = document.getElementById('vplay'), sb = document.getElementById('vsound');
+    const I = {
+      play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>',
+      pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.8" height="14" rx="1.2"/><rect x="13.7" y="5" width="3.8" height="14" rx="1.2"/></svg>',
+      on: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
+      off: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>'
+    };
+    const mobile = matchMedia('(max-width: 700px)').matches;
+    const safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const webm = !safari && !!v.canPlayType && !!v.canPlayType('video/webm; codecs="vp9, opus"');
+    const SRC = mobile ? 'media/hero-480.mp4' : (webm ? 'media/hero-720.webm' : 'media/hero-720.mp4');
+    const conn = navigator.connection || {};
+    const autoOK = !matchMedia('(prefers-reduced-motion: reduce)').matches && !conn.saveData && !/(^|-)2g$/.test(conn.effectiveType || '');
+    let loaded = false, userPaused = false, ready = false, inView = false;
+    const ui = () => {
+      pb.innerHTML = v.paused ? I.play : I.pause; pb.setAttribute('aria-label', v.paused ? 'Play' : 'Pause');
+      sb.innerHTML = v.muted ? I.off : I.on; sb.setAttribute('aria-label', v.muted ? 'Turn sound on' : 'Turn sound off');
+    };
+    const load = () => { if (loaded) return; loaded = true; v.src = SRC; box.classList.add('started'); };
+    const play = () => { load(); box.classList.add('pending'); const p = v.play(); if (p && p.catch) p.catch(() => box.classList.remove('pending')); };
+    v.addEventListener('playing', () => { box.classList.add('shown', 'running'); box.classList.remove('pending'); ui(); });
+    v.addEventListener('pause', () => { box.classList.remove('running', 'pending'); ui(); });
+    v.addEventListener('error', () => { box.classList.remove('running', 'pending', 'started'); });
+    const sync = () => {
+      if (!ready || !autoOK) return;
+      if (inView && !userPaused && !document.hidden) { if (v.paused) play(); }
+      else if (loaded && !v.paused) v.pause();
+    };
+    big.addEventListener('click', () => { userPaused = false; play(); });
+    pb.addEventListener('click', () => { if (v.paused) { userPaused = false; play(); } else { userPaused = true; v.pause(); } });
+    sb.addEventListener('click', () => { v.muted = !v.muted; ui(); });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(e => { inView = e[0].isIntersecting; sync(); }, { threshold: .35 }).observe(box);
+    } else { inView = true; }
+    document.addEventListener('visibilitychange', sync);
+    const start = () => { ready = true; sync(); };
+    const afterLoad = () => ('requestIdleCallback' in window ? requestIdleCallback(start, { timeout: 2000 }) : setTimeout(start, 800));
+    if (document.readyState === 'complete') afterLoad(); else addEventListener('load', afterLoad, { once: true });
+    ui();
+  })();
 
   // 24-hour rhythm (minutes browsed in each hour of the example day)
   const minutes = [4, 1, 0, 0, 0, 0, 0, 2, 8, 14, 22, 26, 18, 20, 31, 28, 24, 36, 54, 30, 33, 41, 22, 12];
