@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbfaf9">
 <title>WebWell</title>
+<link rel="preload" as="image" href="media/shot-newtab-hero.webp" type="image/webp" fetchpriority="high">
 <meta name="description" content="WebWell is a free browser extension for Brave and Chrome: a calm new tab with music and focus sessions, site blocking, and private screen-time tracking.">
 <link rel="icon" href="media/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -572,8 +573,13 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
   .chip { animation: none !important; opacity: 1; }
   .frame-glow { transform: none !important; }
 }
+
+/* images: no black flash, they fade in once decoded */
+.shot, .pic, .night-shot { background: var(--paper-2); }
+.shot img, .pic img, .night-shot img, .bento img { opacity: 0; transition: opacity .6s var(--ease); }
+.shot img.ld, .pic img.ld, .night-shot img.ld, .bento img.ld { opacity: 1; }
 </style>
-</head>
+<noscript><style>.shot img,.pic img,.night-shot img,.bento img{opacity:1!important}</style></noscript></head>
 <body>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="ck" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol></svg>
@@ -630,11 +636,11 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
             <div class="url"><span id="url-text">webwell / new-tab</span></div>
             <div class="frame-spacer"></div>
           </div>
-          <div class="shot" role="tabpanel" id="p-newtab" aria-labelledby="t-newtab"><img src="media/shot-newtab-hero.webp" alt="The WebWell new tab: a clock, today’s focus with a Start focusing button, a compact music player, and a Tasks pill over a photo of Kirkjufell in Iceland." width="2400" height="1350"></div>
-          <div class="shot" role="tabpanel" id="p-music" aria-labelledby="t-music" hidden><img src="media/shot-newtab-music.webp" alt="The music panel open on the new tab, showing the song and artist, a Save playlist button, and Spotify with suggested playlists." width="2400" height="1350" loading="lazy"></div>
-          <div class="shot" role="tabpanel" id="p-focus" aria-labelledby="t-focus" hidden><img src="media/shot-newtab-focus.webp" alt="A focus session in progress: a large timer, the task being worked on, pause and end buttons, and sound choices." width="2400" height="1350" loading="lazy"></div>
-          <div class="shot" role="tabpanel" id="p-dash" aria-labelledby="t-dash" hidden><img src="media/shot-dashboard.webp" alt="The WebWell dashboard with productivity score, time split, streak, categories, activity manager and 24-hour rhythm." width="2400" height="1350" loading="lazy"></div>
-          <div class="shot" role="tabpanel" id="p-protect" aria-labelledby="t-protect" hidden><img src="media/shot-protect.webp" alt="The Protect page with the adult content filter, short-video blocker, mindful pause, focus-session blocking and parent PIN." width="2400" height="1350" loading="lazy"></div>
+          <div class="shot" role="tabpanel" id="p-newtab" aria-labelledby="t-newtab"><img fetchpriority="high" decoding="async" src="media/shot-newtab-hero.webp" alt="The WebWell new tab: a clock, today’s focus with a Start focusing button, a compact music player, and a Tasks pill over a photo of Kirkjufell in Iceland." width="2400" height="1350"></div>
+          <div class="shot" role="tabpanel" id="p-music" aria-labelledby="t-music" hidden><img src="media/shot-newtab-music.webp" alt="The music panel open on the new tab, showing the song and artist, a Save playlist button, and Spotify with suggested playlists." width="2400" height="1350" fetchpriority="low" decoding="async"></div>
+          <div class="shot" role="tabpanel" id="p-focus" aria-labelledby="t-focus" hidden><img src="media/shot-newtab-focus.webp" alt="A focus session in progress: a large timer, the task being worked on, pause and end buttons, and sound choices." width="2400" height="1350" fetchpriority="low" decoding="async"></div>
+          <div class="shot" role="tabpanel" id="p-dash" aria-labelledby="t-dash" hidden><img src="media/shot-dashboard.webp" alt="The WebWell dashboard with productivity score, time split, streak, categories, activity manager and 24-hour rhythm." width="2400" height="1350" fetchpriority="low" decoding="async"></div>
+          <div class="shot" role="tabpanel" id="p-protect" aria-labelledby="t-protect" hidden><img src="media/shot-protect.webp" alt="The Protect page with the adult content filter, short-video blocker, mindful pause, focus-session blocking and parent PIN." width="2400" height="1350" fetchpriority="low" decoding="async"></div>
         </div></div>
         <p class="stage-cap" id="stage-cap" aria-live="polite">Your clock, your main focus and your music on a quiet photo. One click to start focusing.</p>
       </div>
@@ -1040,6 +1046,14 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
       }, { passive: true });
       document.addEventListener('pointerleave', () => apply(0, 0));
     }
+  })();
+  (function () {
+    const imgs = document.querySelectorAll('.shot img, .pic img, .night-shot img, .bento img');
+    imgs.forEach(im => {
+      const done = () => im.classList.add('ld');
+      if (im.complete && im.naturalWidth) done();
+      else { im.addEventListener('load', () => (im.decode ? im.decode().catch(() => {}).then(done) : done()), { once: true }); im.addEventListener('error', done, { once: true }); }
+    });
   })();
   (function () { const r = document.querySelector('.ring'); if (!r) return;
     if (!('IntersectionObserver' in window)) { r.classList.add('go'); return; }
