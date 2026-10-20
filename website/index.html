@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbfaf9">
 <title>WebWell</title>
-<link rel="preload" as="image" href="media/hero-poster.webp" type="image/webp" fetchpriority="high">
+<link rel="preload" as="image" href="media/hero-poster.webp" imagesrcset="media/hero-poster.webp 1280w, media/hero-poster-1920.webp 1920w" imagesizes="(min-width: 1100px) 1040px, 100vw" type="image/webp" fetchpriority="high">
 <meta name="description" content="WebWell is a free browser extension for Brave and Chrome: a calm new tab with music and focus sessions, site blocking, and private screen-time tracking.">
 <link rel="icon" href="media/logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -645,7 +645,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 
       <div class="stage rise" style="--d:5">
         <div class="vframe" id="vframe">
-          <img class="vposter" src="media/hero-poster.webp" alt="WebWell: Meet your calmer new tab. A calm new tab with a clock, your focus for the day and music." width="1280" height="720" fetchpriority="high" decoding="async">
+          <img class="vposter" src="media/hero-poster.webp" srcset="media/hero-poster.webp 1280w, media/hero-poster-1920.webp 1920w" sizes="(min-width: 1100px) 1040px, 100vw" alt="WebWell: Meet your calmer new tab. A calm new tab with a clock, your focus for the day and music." width="1280" height="720" fetchpriority="high" decoding="async">
           <video id="heroVideo" muted playsinline loop preload="none" tabindex="-1" aria-label="A short tour of WebWell: the new tab, music, focus sessions, insights and Protect."></video>
           <button class="vbig" id="vbig" type="button" aria-label="Play the tour"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg></button>
           <div class="vctl">
@@ -1111,11 +1111,12 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
       on: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
       off: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>'
     };
-    const mobile = matchMedia('(max-width: 700px)').matches;
-    const safari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const webm = !safari && !!v.canPlayType && !!v.canPlayType('video/webm; codecs="vp9, opus"');
-    const SRC = mobile ? 'media/hero-480.mp4' : (webm ? 'media/hero-720.webm' : 'media/hero-720.mp4');
+    // pick the sharpest file this screen can actually show (1080p only for big or high-density screens, never on a slow link)
     const conn = navigator.connection || {};
+    const need = box.getBoundingClientRect().width * (window.devicePixelRatio || 1);
+    const slowLink = conn.type === 'cellular' || /(^|-)3g$/.test(conn.effectiveType || '');
+    const tier = need > 1100 && !slowLink ? 1080 : need > 760 ? 720 : 480;
+    const SRC = 'media/hero-' + tier + '.mp4';
     const autoOK = !matchMedia('(prefers-reduced-motion: reduce)').matches && !conn.saveData && !/(^|-)2g$/.test(conn.effectiveType || '');
     let loaded = false, userPaused = false, ready = false, inView = false;
     const ui = () => {
