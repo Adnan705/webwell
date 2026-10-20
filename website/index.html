@@ -1052,9 +1052,11 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     imgs.forEach(im => {
       const done = () => im.classList.add('ld');
       if (im.complete && im.naturalWidth) done();
-      else { im.addEventListener('load', () => (im.decode ? im.decode().catch(() => {}).then(done) : done()), { once: true }); im.addEventListener('error', done, { once: true }); }
+      else { im.addEventListener('load', done, { once: true }); im.addEventListener('error', done, { once: true }); }
     });
   })();
+  setTimeout(() => document.querySelectorAll('.shot img, .pic img, .night-shot img, .bento img').forEach(im => { if (im.complete && im.naturalWidth) im.classList.add('ld'); }), 2500);
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => requestAnimationFrame(() => document.querySelectorAll('.shot img').forEach(im => { if (im.complete && im.naturalWidth) im.classList.add('ld'); }))));
   (function () { const r = document.querySelector('.ring'); if (!r) return;
     if (!('IntersectionObserver' in window)) { r.classList.add('go'); return; }
     const io = new IntersectionObserver(e => { if (e[0].isIntersecting) { r.classList.add('go'); io.disconnect(); } }, { threshold: .4 }); io.observe(r); })();
