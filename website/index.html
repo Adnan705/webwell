@@ -538,6 +538,13 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     radial-gradient(40% 50% at 100% 100%, color-mix(in srgb, #ffc56e 20%, transparent) 0%, transparent 70%),
     radial-gradient(40% 50% at 0% 100%, color-mix(in srgb, #ff8fa0 14%, transparent) 0%, transparent 70%);
 }
+/* closing banner, dark theme: one soft coral glow, a lifted card, no muddy corner tints */
+:root[data-theme="dark"] .cta-band { background: var(--card); border-color: color-mix(in srgb, #fff 9%, transparent); }
+:root[data-theme="dark"] .cta-band::before { background: radial-gradient(55% 60% at 50% 0%, color-mix(in srgb, var(--coral) 17%, transparent) 0%, transparent 72%); }
+:root[data-theme="dark"] .cta-band .btn-ghost { background: color-mix(in srgb, #fff 7%, transparent); border-color: color-mix(in srgb, #fff 16%, transparent); color: var(--ink); }
+:root[data-theme="dark"] .cta-band .btn-ghost:hover { background: color-mix(in srgb, #fff 11%, transparent); border-color: color-mix(in srgb, #fff 30%, transparent); }
+/* the logo glow follows the icon's own shape instead of a rounded box around it */
+.final img { border-radius: 0; box-shadow: none; filter: drop-shadow(0 12px 20px color-mix(in srgb, var(--coral) 38%, transparent)); }
 .cta-band .lede { color: var(--ink-2); }
 .cta-band h2 .serif { color: var(--coral); }
 .night::before { display: none; }
