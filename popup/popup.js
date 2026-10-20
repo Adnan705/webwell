@@ -118,6 +118,8 @@ function renderToday() {
       '</span><span class="bar"><i style="width:' + Math.max(4, Math.round(e.secs / max * 100)) + '%;background:' + CATEGORY_META[e.cat].color + '"></i></span><span class="tm">' + fmtDurShort(e.secs) + '</span></div>').join('');
   }
   html += '</section>';
+  if (view.dataset.sig === html) return;   // nothing changed: leave the page alone
+  view.dataset.sig = html;
   view.innerHTML = html;
 
   $('seeAll').addEventListener('click', () => openDash(''));
@@ -382,6 +384,7 @@ function openDash(hash) {
 const RENDER = { today: renderToday, focus: renderFocus, protect: renderProtect, settings: renderSettings };
 function render() {
   clearInterval(ticker); ticker = null;
+  view.classList.remove('still'); delete view.dataset.sig;   // a real view change plays the entrance animation
   document.querySelectorAll('#tabs button').forEach(b => { const on = b.dataset.tab === tab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
   renderHeader();
   (RENDER[tab] || renderToday)();
@@ -407,6 +410,7 @@ chrome.runtime.onMessage.addListener(msg => { if (msg && msg.target === 'ww-play
 setInterval(() => {
   if (tab !== 'today' || document.hidden) return;
   if (document.activeElement && /INPUT|SELECT/.test(document.activeElement.tagName)) return;
+  view.classList.add('still');   // quiet refresh: no fade-in replay
   load().then(renderToday);
 }, 5000);
 
