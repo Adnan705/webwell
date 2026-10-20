@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://webwell.vercel.app"><b>Website</b></a>
+  <a href="https://webwell.app"><b>webwell.app</b></a>
 </p>
 
 <p align="center">

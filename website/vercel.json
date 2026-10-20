@@ -1,4 +1,12 @@
 {
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [{ "type": "host", "value": "www.webwell.app" }],
+      "destination": "https://webwell.app/:path",
+      "permanent": true
+    }
+  ],
   "headers": [
     { "source": "/media/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
   ]
