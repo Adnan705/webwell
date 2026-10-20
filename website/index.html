@@ -546,8 +546,8 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 .cta-wrap { overflow-x: clip; }
 /* one ambient light for the whole page: the same soft coral, amber and pink glow as the closing section,
    drifting down the page so every section sits in the same atmosphere */
-main { position: relative; isolation: isolate; }
-main::before {
+body { position: relative; isolation: isolate; }
+body::before {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background-image:
     radial-gradient(ellipse 820px 520px at 50% 0, color-mix(in srgb, var(--coral) 16%, transparent) 0%, transparent 72%),
@@ -556,7 +556,7 @@ main::before {
     radial-gradient(ellipse 720px 480px at 95% 1950px, color-mix(in srgb, var(--coral) 12%, transparent) 0%, transparent 72%);
   background-size: 100% 2400px; background-repeat: repeat-y;
 }
-:root[data-theme="dark"] main::before {
+:root[data-theme="dark"] body::before {
   background-image:
     radial-gradient(ellipse 820px 520px at 50% 0, color-mix(in srgb, var(--coral) 14%, transparent) 0%, transparent 76%),
     radial-gradient(ellipse 640px 440px at 97% 560px, color-mix(in srgb, var(--coral) 6%, transparent) 0%, transparent 76%),
