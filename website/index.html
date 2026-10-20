@@ -527,20 +527,25 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 @media (max-width: 560px) { .frame-bar .url { display: none; } }
 .tab[aria-selected="true"] { background: var(--btn); color: var(--btn-ink); }
 .cta-band {
-  position: relative; overflow: hidden; isolation: isolate;
-  border-radius: 32px; padding: clamp(56px, 8vw, 104px) clamp(20px, 5vw, 64px);
-  background: var(--paper-2); color: var(--ink); border: 1px solid var(--rule); box-shadow: var(--shadow);
+  position: relative; isolation: isolate; overflow: visible;
+  padding: clamp(48px, 7vw, 96px) clamp(20px, 5vw, 64px); color: var(--ink);
+  background: none; border: 0; box-shadow: none;
 }
+/* no box: the words sit on the page, with a wide warm wash behind them */
 .cta-band::before {
-  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  content: ""; position: absolute; inset: -45% -22%; z-index: -1; pointer-events: none; filter: blur(8px);
   background:
-    radial-gradient(60% 70% at 50% 0%, color-mix(in srgb, var(--coral) 22%, transparent) 0%, transparent 70%),
-    radial-gradient(40% 50% at 100% 100%, color-mix(in srgb, #ffc56e 20%, transparent) 0%, transparent 70%),
-    radial-gradient(40% 50% at 0% 100%, color-mix(in srgb, #ff8fa0 14%, transparent) 0%, transparent 70%);
+    radial-gradient(40% 55% at 50% 50%, color-mix(in srgb, var(--coral) 17%, transparent) 0%, transparent 70%),
+    radial-gradient(28% 40% at 78% 62%, color-mix(in srgb, #ffc56e 22%, transparent) 0%, transparent 70%);
 }
-/* closing banner, dark theme: one soft coral glow, a lifted card, no muddy corner tints */
-:root[data-theme="dark"] .cta-band { background: var(--card); border-color: color-mix(in srgb, #fff 9%, transparent); }
-:root[data-theme="dark"] .cta-band::before { background: radial-gradient(55% 60% at 50% 0%, color-mix(in srgb, var(--coral) 17%, transparent) 0%, transparent 72%); }
+:root[data-theme="dark"] .cta-band::before {
+  background:
+    radial-gradient(40% 55% at 50% 50%, color-mix(in srgb, var(--coral) 20%, transparent) 0%, transparent 70%),
+    radial-gradient(26% 36% at 78% 62%, color-mix(in srgb, var(--coral) 9%, transparent) 0%, transparent 72%);
+}
+.cta-wrap { overflow-x: clip; }
+.cta-band .lede { color: var(--ink-2); }
+.cta-band h2 .serif { color: var(--coral); }
 :root[data-theme="dark"] .cta-band .btn-ghost { background: color-mix(in srgb, #fff 7%, transparent); border-color: color-mix(in srgb, #fff 16%, transparent); color: var(--ink); }
 :root[data-theme="dark"] .cta-band .btn-ghost:hover { background: color-mix(in srgb, #fff 11%, transparent); border-color: color-mix(in srgb, #fff 30%, transparent); }
 /* the logo glow follows the icon's own shape instead of a rounded box around it */
@@ -1029,7 +1034,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     </div>
   </section>
 
-  <section class="section" style="padding-top:0">
+  <section class="section cta-wrap" style="padding-top:0">
     <div class="wrap">
       <div class="final cta-band">
         <img src="/favicon.svg" alt="" width="64" height="64">
