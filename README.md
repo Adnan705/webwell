@@ -2,11 +2,15 @@
   <img src="icons/icon128.png" width="96" alt="WebWell logo">
 </p>
 
-<h1 align="center">WebWell — Daily Browser Monitor</h1>
+<h1 align="center">WebWell</h1>
 
 <p align="center">
-  Your Digital Wellbeing for the desktop. See which websites take your time,<br>
-  score your productivity, and get warned about your biggest time sinks.
+  A calmer new tab for Brave and Chrome. Focus sessions with music, site blocking when you want it,<br>
+  and honest numbers about where your time goes. Free, and private on your device.
+</p>
+
+<p align="center">
+  <a href="https://webwell.vercel.app"><b>Website</b></a>
 </p>
 
 <p align="center">
@@ -20,7 +24,20 @@
 
 ---
 
-![WebWell dashboard](screenshots/dashboard.png)
+<p align="center">
+  <img src="website/media/shot-newtab-hero.webp" alt="The WebWell new tab: clock, today's focus and a compact music player over a landmark photo">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="website/media/shot-newtab-music.webp" alt="Music panel on the new tab"><br><sub><b>Music</b> · Spotify, SoundCloud and offline sounds, one click away</sub></td>
+    <td width="50%"><img src="website/media/shot-newtab-focus.webp" alt="A full-screen focus session"><br><sub><b>Focus</b> · a full-screen timer with calming sound</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="website/media/shot-dashboard.webp" alt="The WebWell dashboard"><br><sub><b>Dashboard</b> · your score, time split and week at a glance</sub></td>
+    <td width="50%"><img src="website/media/shot-protect.webp" alt="The Protect page"><br><sub><b>Protect</b> · adult-content and short-video blockers, mindful pause</sub></td>
+  </tr>
+</table>
 
 *Everything is tracked **privately, on your device**. Nothing ever leaves your browser.*
 
