@@ -19,6 +19,10 @@ Key facts:
 - [Features: focus sessions](https://webwell.app/#focus): a full-screen timer with calming sound; distracting sites are blocked until the session ends.
 - [Features: Protect](https://webwell.app/#protect): adult-content filter, short-video blocker, custom block list, mindful pause and parent PIN. All off until the user switches them on.
 
+## Get it
+
+- [Install guide](https://webwell.app/install): a two-minute, step-by-step guide to installing WebWell on Chrome or Brave from GitHub while the Chrome Web Store version is on its way.
+
 ## Trust and privacy
 
 - [Privacy policy](https://webwell.app/privacy): exactly what the extension stores on the device, when anything leaves the browser, why each permission is needed, and what this website collects.
