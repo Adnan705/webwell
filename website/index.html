@@ -1256,5 +1256,6 @@ body { background: transparent; }
   document.getElementById("hours").innerHTML = minutes.map((m, i) =>
     `<i class="${m === max ? "peak" : ""}" style="--h:${Math.max(3, (m / max) * 100)}%;--i:${i}"></i>`).join("");
 </script>
+<script src="/analytics.js" defer></script>
 </body>
 </html>

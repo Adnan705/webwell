@@ -122,13 +122,13 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 <main><div class="wrap"><article class="doc">
   <span class="eyebrow">Privacy</span>
   <h1>Privacy policy</h1>
-  <p class="updated">Last updated October 21, 2026 · applies to WebWell 1.7.0 and this website</p>
+  <p class="updated">Last updated October 22, 2026 · applies to WebWell 1.7.0 and this website</p>
 
   <aside class="short" aria-label="The short version">
     <h2>The short version</h2>
     <ul>
       <li>Your browsing data stays on your device. I never receive it.</li>
-      <li>There are no accounts, no ads, no analytics and no trackers, in the extension or on this website.</li>
+      <li>The extension has no accounts, no ads, no analytics and no trackers. This website uses Google Analytics only if you accept it.</li>
       <li>Something leaves your browser only when you use a feature that needs the internet, like playing music or the optional AI chat. Each one is listed below.</li>
       <li>Uninstalling WebWell deletes everything it stored.</li>
     </ul>
@@ -178,8 +178,8 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 
   <h2 id="website">This website</h2>
   <ul>
-    <li>It sets no cookies and runs no analytics, advertising or tracking scripts. Fonts and the video are served from this site, not from third parties.</li>
-    <li>It remembers one thing in your browser: whether you picked light or dark mode.</li>
+    <li><b>Analytics, only if you accept.</b> A banner asks first. If you accept, Google Analytics sets cookies and records anonymous visit data (pages viewed, clicks on install and download buttons, your approximate country and the site you came from). If you decline, nothing from Google loads. You can change your choice any time with &ldquo;Cookie choice&rdquo; in the footer. Google&rsquo;s privacy policy applies to that data.</li><li>It runs no advertising scripts. Fonts and the video are served from this site, not from third parties.</li>
+    <li>It remembers your light or dark mode and your cookie choice in your browser.</li>
     <li>The site is hosted on Vercel, which may keep standard server logs (such as IP address and the pages requested) for security and reliability. I don’t use them for analytics.</li>
     <li>Links to GitHub and music services leave this site. Their own policies apply once you’re there.</li>
   </ul>
@@ -216,5 +216,6 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     });
   })();
 </script>
+<script src="/analytics.js" defer></script>
 </body>
 </html>

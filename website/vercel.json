@@ -1,5 +1,6 @@
 {
-  "cleanUrls": true,
+  "cleanUrls": false,
+  "rewrites": [{ "source": "/install", "destination": "/install.html" }, { "source": "/privacy", "destination": "/privacy.html" }],
   "trailingSlash": false,
   "redirects": [
     {
