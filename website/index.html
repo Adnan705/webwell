@@ -1109,7 +1109,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
   const LINKS = {
     install: "",  // Chrome Web Store listing
     github: "https://github.com/Adnan705/webwell",   // public repository
-    privacy: "",  // privacy policy page
+    privacy: "/privacy",  // privacy policy page
     contact: "mailto:info.adnanak@gmail.com"   // support email
   };
   document.querySelectorAll('[data-install]').forEach(a => a.addEventListener('click', e => { if (a.getAttribute('aria-disabled') === 'true') e.preventDefault(); }));

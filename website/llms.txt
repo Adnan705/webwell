@@ -22,3 +22,4 @@ Status: heading to the Chrome Web Store. Until then it can be installed from Git
 - Website: https://webwell.app/
 - Source code: https://github.com/Adnan705/webwell
 - FAQ: https://webwell.app/#faq
+- Privacy policy: https://webwell.app/privacy

@@ -76,7 +76,7 @@
 - Blocking runs on Chrome's built-in rules, with the block list shipped inside the extension. Site access is only requested when you turn a blocking feature on.
 - Uninstalling the extension deletes everything.
 
-See [PRIVACY-POLICY-draft.md](PRIVACY-POLICY-draft.md) for the full draft.
+Read the full policy at [webwell.app/privacy](https://webwell.app/privacy).
 
 ## 🐞 Bug reports & feedback
 
