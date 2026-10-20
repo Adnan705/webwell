@@ -1122,13 +1122,15 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
       pb.innerHTML = v.paused ? I.play : I.pause; pb.setAttribute('aria-label', v.paused ? 'Play' : 'Pause');
       sb.innerHTML = v.muted ? I.off : I.on; sb.setAttribute('aria-label', v.muted ? 'Turn sound on' : 'Turn sound off');
     };
-    const load = () => { if (loaded) return; loaded = true; v.src = SRC; box.classList.add('started'); };
+    const load = () => { if (loaded) return; loaded = true; v.preload = 'auto'; v.src = SRC; box.classList.add('started'); };
     const play = () => { load(); box.classList.add('pending'); const p = v.play(); if (p && p.catch) p.catch(() => box.classList.remove('pending')); };
     v.addEventListener('playing', () => { box.classList.add('shown', 'running'); box.classList.remove('pending'); ui(); });
     v.addEventListener('pause', () => { box.classList.remove('running', 'pending'); ui(); });
     v.addEventListener('error', () => { box.classList.remove('running', 'pending', 'started'); });
+    let near = false;
     const sync = () => {
       if (!ready || !autoOK) return;
+      if (near) load();
       if (inView && !userPaused && !document.hidden) { if (v.paused) play(); }
       else if (loaded && !v.paused) v.pause();
     };
@@ -1136,12 +1138,12 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     pb.addEventListener('click', () => { if (v.paused) { userPaused = false; play(); } else { userPaused = true; v.pause(); } });
     sb.addEventListener('click', () => { v.muted = !v.muted; ui(); });
     if ('IntersectionObserver' in window) {
-      new IntersectionObserver(e => { inView = e[0].isIntersecting; sync(); }, { threshold: .35 }).observe(box);
+      new IntersectionObserver(e => { inView = e[0].isIntersecting; sync(); }, { threshold: .12 }).observe(box);
+      new IntersectionObserver(e => { near = e[0].isIntersecting; sync(); }, { rootMargin: '1200px 0px' }).observe(box);
     } else { inView = true; }
     document.addEventListener('visibilitychange', sync);
     const start = () => { ready = true; sync(); };
-    const afterLoad = () => ('requestIdleCallback' in window ? requestIdleCallback(start, { timeout: 2000 }) : setTimeout(start, 800));
-    if (document.readyState === 'complete') afterLoad(); else addEventListener('load', afterLoad, { once: true });
+    if (document.readyState === 'complete') start(); else addEventListener('load', start, { once: true });
     ui();
   })();
 
