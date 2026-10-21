@@ -1,6 +1,6 @@
 {
   "cleanUrls": false,
-  "rewrites": [{ "source": "/install", "destination": "/install.html" }, { "source": "/privacy", "destination": "/privacy.html" }, { "source": "/blog", "destination": "/blog/index.html" }, { "source": "/blog/:slug", "destination": "/blog/:slug.html" }],
+  "rewrites": [{ "source": "/install", "destination": "/install.html" }, { "source": "/privacy", "destination": "/privacy.html" }, { "source": "/goodbye", "destination": "/goodbye.html" }, { "source": "/blog", "destination": "/blog/index.html" }, { "source": "/blog/:slug", "destination": "/blog/:slug.html" }],
   "trailingSlash": false,
   "redirects": [
     {
