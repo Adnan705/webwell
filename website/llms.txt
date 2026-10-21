@@ -28,6 +28,12 @@ Key facts:
 - [Privacy policy](https://webwell.app/privacy): exactly what the extension stores on the device, when anything leaves the browser, why each permission is needed, and what this website collects.
 - [Source code on GitHub](https://github.com/Adnan705/webwell): the full open-source project (MIT licence), including the README and install guide.
 
+## Blog
+
+- [Free Momentum Alternatives for a Calmer New Tab (2026)](https://webwell.app/blog/momentum-alternatives): An honest look at free new-tab extensions like Bonjourr, Tabliss, start.me and WebWell: what each does well, and how to pick one that respects your privacy.
+- [How to Block YouTube Shorts on Desktop (Chrome and Brave)](https://webwell.app/blog/block-youtube-shorts-desktop): Three ways to hide or block YouTube Shorts in Chrome and Brave on your computer, from YouTube’s own setting to extensions, with what each one really does.
+- [How to Track Your Screen Time in Chrome Without Giving Away Your History](https://webwell.app/blog/track-screen-time-chrome-privately): Chrome on desktop has no built-in screen time. Here is how website time trackers work, what to check before you trust one, and how to see where your day goes without uploading it.
+
 ## Optional
 
 - [Sitemap](https://webwell.app/sitemap.xml): list of pages on this website.

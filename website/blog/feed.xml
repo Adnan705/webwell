@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>
+<title>The WebWell blog</title><link>https://webwell.app/blog/</link><description>Guides on focus, screen time and a calmer browser.</description><language>en</language>
+<atom:link href="https://webwell.app/blog/feed.xml" rel="self" type="application/rss+xml"/>
+<item><title>Free Momentum Alternatives for a Calmer New Tab (2026)</title><link>https://webwell.app/blog/momentum-alternatives</link><guid>https://webwell.app/blog/momentum-alternatives</guid><pubDate>Thu, 22 Oct 2026 09:00:00 GMT</pubDate><description>An honest look at free new-tab extensions like Bonjourr, Tabliss, start.me and WebWell: what each does well, and how to pick one that respects your privacy.</description></item>
+<item><title>How to Block YouTube Shorts on Desktop (Chrome and Brave)</title><link>https://webwell.app/blog/block-youtube-shorts-desktop</link><guid>https://webwell.app/blog/block-youtube-shorts-desktop</guid><pubDate>Thu, 22 Oct 2026 09:00:00 GMT</pubDate><description>Three ways to hide or block YouTube Shorts in Chrome and Brave on your computer, from YouTube’s own setting to extensions, with what each one really does.</description></item>
+<item><title>How to Track Your Screen Time in Chrome Without Giving Away Your History</title><link>https://webwell.app/blog/track-screen-time-chrome-privately</link><guid>https://webwell.app/blog/track-screen-time-chrome-privately</guid><pubDate>Thu, 22 Oct 2026 09:00:00 GMT</pubDate><description>Chrome on desktop has no built-in screen time. Here is how website time trackers work, what to check before you trust one, and how to see where your day goes without uploading it.</description></item>
+</channel></rss>
