@@ -105,8 +105,40 @@ async function renderBlocked() {
     $('eyebrow').textContent = 'Always blocked';
     $('title').textContent = h ? h + ' is blocked' : 'This site is blocked';
     $('body').textContent = 'It’s on your block list. You can change that in WebWell → Protect.';
-    actions.append(button('Go back', 'primary', goBack));
+    const { protect } = await chrome.storage.local.get('protect');
+    if (h && protect && !protect.pinHash) {
+      actions.append(button('Unblock ' + h, 'primary', () => unblockHost(h)));
+      actions.append(button('Go back', 'ghost', goBack));
+    } else {
+      actions.append(button('Go back', 'primary', goBack));
+    }
+    if (url) watchForUnblock(h, url);
   }
+}
+
+function listed(list, h) {
+  return (list || []).some(d => d && (h === d || h.endsWith('.' + d)));
+}
+
+async function unblockHost(h) {
+  const { protect } = await chrome.storage.local.get('protect');
+  if (!protect) return;
+  protect.blocklist = (protect.blocklist || []).filter(d => !(d && (h === d || h.endsWith('.' + d))));
+  await chrome.storage.local.set({ protect });
+}
+
+// Reloading this page would only reload the block screen, so as soon as the site
+// leaves the block list (from here, the popup or the dashboard) open it for real.
+function watchForUnblock(h, url) {
+  let going = false;
+  chrome.storage.onChanged.addListener(async (changes, area) => {
+    if (area !== 'local' || !changes.protect || going) return;
+    const list = (changes.protect.newValue || {}).blocklist || [];
+    if (!h || listed(list, h)) return;
+    going = true;
+    try { await chrome.runtime.sendMessage({ type: 'ww-protect-sync' }); } catch (e) {}
+    location.replace(url);
+  });
 }
 
 /* ---------------- mindful pause ---------------- */

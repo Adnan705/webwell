@@ -42,6 +42,13 @@ async function load() {
   try {
     const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
     tabDomain = t ? domainOf(t.url) : null;
+    // On WebWell's own block screen, the site that matters is the one that was blocked.
+    if (t && !tabDomain && t.url && t.url.indexOf(chrome.runtime.getURL('blocked/')) === 0) {
+      let orig = '';
+      try { orig = new URL(t.url).searchParams.get('u') || ''; } catch (e) {}
+      if (!orig) { const k = 'nav' + t.id; orig = ((await chrome.storage.session.get(k))[k]) || ''; }
+      tabDomain = domainOf(orig);
+    }
   } catch (e) { tabDomain = null; }
   document.body.classList.toggle('dark', !!S.settings.darkMode);
 }
