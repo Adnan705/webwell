@@ -6,7 +6,7 @@
    "48": "icons/icon48.png"
   },
   "default_popup": "popup/popup.html",
-  "default_title": "WebWell â€” today's browsing"
+  "default_title": "WebWell — today's browsing"
  },
  "author": "Written & Developed by Adnan",
  "background": {
@@ -29,7 +29,7 @@
  },
  "manifest_version": 3,
  "minimum_chrome_version": "114",
- "name": "WebWell â€” Daily Browser Monitor",
+ "name": "WebWell — Daily Browser Monitor",
  "options_page": "dashboard/dashboard.html",
  "permissions": [
   "tabs",
