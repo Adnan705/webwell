@@ -54,7 +54,7 @@
   ]
  },
  "short_name": "WebWell",
- "version": "1.7.0",
+ "version": "1.7.1",
  "chrome_url_overrides": {
   "newtab": "newtab/newtab.html"
  },

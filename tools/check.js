@@ -44,7 +44,10 @@ check('html script/style refs exist', () => {
   for (const f of files.filter(f => f.endsWith('.html'))) {
     const dir = path.dirname(f);
     for (const m of read(f).matchAll(/(?<![\w-])(?:src|href)="([^"#:]+?)(?:\?[^"]*)?"/g)) {
-      assert(fs.existsSync(path.join(ROOT, dir, m[1])), f + ' -> ' + m[1]);
+      // a leading slash on the website means "from the site root", not from the page's own folder
+      if (f.startsWith('website') && m[1].startsWith('/') && !/\.[a-z0-9]+$/i.test(m[1])) continue; // a page route such as /install
+      const base = m[1].startsWith('/') && f.startsWith('website') ? 'website' : dir;
+      assert(fs.existsSync(path.join(ROOT, base, m[1])), f + ' -> ' + m[1]);
     }
   }
 });

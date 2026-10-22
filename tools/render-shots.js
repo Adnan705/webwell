@@ -85,7 +85,7 @@ function stubFor(s) {
   var copy = function (o) { return JSON.parse(JSON.stringify(o)); };
   var noop = function () {}; var ev = { addListener: noop };
   window.chrome = {
-    runtime: { getURL: function (p) { return 'chrome-extension://x/' + p; }, getManifest: function () { return { version: '1.7.0' }; },
+    runtime: { getURL: function (p) { return 'chrome-extension://x/' + p; }, getManifest: function () { return { version: '1.7.1' }; },
       sendMessage: function (m) { return Promise.resolve(m && m.cmd === 'get-state' ? undefined : { ok: true, live: null }); },
       onMessage: { addListener: function (f) { cbs.push(f); } } },
     storage: { local: { get: function () { return Promise.resolve(copy(store)); }, set: function (o) { Object.assign(store, copy(o)); return Promise.resolve(); }, remove: function (k) { [].concat(k).forEach(function (x) { delete store[x]; }); return Promise.resolve(); } }, onChanged: ev },
