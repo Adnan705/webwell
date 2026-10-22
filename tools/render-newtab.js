@@ -63,7 +63,7 @@ let html = fs.readFileSync(path.join(ROOT, 'newtab/newtab.html'), 'utf8').replac
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wwshot-'));
 const page = path.join(tmp, 'newtab-preview.html'); fs.writeFileSync(page, html);
 const args = ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--allow-file-access-from-files',
-  '--user-data-dir=' + path.join(tmp, 'profile'), '--window-size=' + W + ',' + H, '--virtual-time-budget=6000', '--screenshot=' + out, 'file:///' + page.replace(/\\/g, '/')];
+  '--user-data-dir=' + path.join(tmp, 'profile'), '--force-device-scale-factor=' + (process.env.WW_SCALE || 1), '--window-size=' + W + ',' + H, '--virtual-time-budget=6000', '--screenshot=' + out, 'file:///' + page.replace(/\\/g, '/')];
 const r = cp.spawnSync(browser, args, { encoding: 'utf8', timeout: 90000 });
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(fs.existsSync(out) ? 'saved ' + out : 'FAILED: ' + (r.stderr || r.stdout || r.error));
