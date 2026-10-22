@@ -15,7 +15,7 @@ if (!browser) { console.error('No Brave/Chrome found'); process.exit(1); }
 const today = new Date(); const dk = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const key = dk(today);
 const seed = {
-  profile: { name: 'Adnan', theme: 'dusk', bgMode: 'photos', bgPick: { date: key, idx: 3 } },
+  profile: { name: 'Adnan', theme: 'dusk', bgMode: process.env.WW_BG || 'photos', vecStyle: process.env.WW_VSTYLE || 'mountains', vecPal: process.env.WW_VPAL || 'dawn', bgPick: { date: key, idx: 3 } },
   ntBookmarks: [{ id: 'b1', name: 'facebook.com', url: 'https://facebook.com' }, { id: 'b2', name: 'github.com', url: 'https://github.com' }, { id: 'b3', name: 'gmail.com', url: 'https://mail.google.com' }],
   ntFavs: [
     { id: 'sp:https://open.spotify.com/track/1', kind: 'spotify', url: 'https://open.spotify.com/track/1', title: 'Sweater Weather', sub: 'The Neighbourhood', art: 'img/lofi-girl.webp' },
@@ -55,7 +55,7 @@ const stub = `<base href="file:///${ROOT.replace(/\\/g, '/')}/newtab/">
     tabs: { create: function () {}, update: function () {} }, search: { query: function () {} }, alarms: {}, idle: {}
   };
   window.__ui = function (ui) { cbs.forEach(function (f) { try { f({ target: 'ww-player-ui', ui: ui }); } catch (e) {} }); };
-  try { localStorage.setItem('ww_boot', JSON.stringify({ v: 1, theme: 'dusk', bgMode: 'photos', name: 'Adnan', bgPick: store.profile.bgPick, focus: store.focus || null, tasksDate: '${key}', tasks: (store.tasks && store.tasks['${key}']) || [], bookmarks: store.ntBookmarks, hidden: [], auto: [] })); } catch (e) {}
+  try { localStorage.setItem('ww_boot', JSON.stringify({ v: 1, theme: 'dusk', bgMode: store.profile.bgMode, vecStyle: store.profile.vecStyle, vecPal: store.profile.vecPal, name: 'Adnan', bgPick: store.profile.bgPick, focus: store.focus || null, tasksDate: '${key}', tasks: (store.tasks && store.tasks['${key}']) || [], bookmarks: store.ntBookmarks, hidden: [], auto: [] })); } catch (e) {}
   window.addEventListener('load', function () { setTimeout(function () { try { ${after} } catch (e) { document.title = 'ACTION ERROR ' + e.message; } }, 600); });
 })();
 </script>`;

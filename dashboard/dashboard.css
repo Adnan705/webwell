@@ -576,3 +576,16 @@ body.dark .railnav .nav.active{background:var(--acc);color:#fff;box-shadow:0 6px
 #aiFab svg{width:46px;height:46px;display:block}
 #aiFab:hover{transform:translateY(-2px);background:var(--acc-deep);box-shadow:0 14px 30px rgba(232,96,76,.46)}
 #aiFab:active{transform:scale(.95)}
+/* vector background picker */
+.vec-picker{padding:16px 0 4px;border-top:1px solid var(--line)}
+.vec-picker .t{font-weight:700;font-size:14px}
+.vec-picker .d{color:var(--mut);font-size:12px;margin:3px 0 12px;line-height:1.6}
+.vec-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.vec-tile{position:relative;aspect-ratio:16/10;border:2px solid transparent;border-radius:14px;background-size:cover;background-position:center;cursor:pointer;overflow:hidden;padding:0;transition:transform .2s,border-color .2s}
+.vec-tile:hover{transform:translateY(-2px)}
+.vec-tile.on{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
+.vec-tile span{position:absolute;left:8px;bottom:7px;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.65)}
+.vec-pals{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.vec-pal{width:34px;height:34px;border-radius:50%;border:3px solid var(--card);outline:2px solid var(--line);cursor:pointer;padding:0;transition:transform .2s}
+.vec-pal:hover{transform:scale(1.1)}
+.vec-pal.on{outline:2px solid var(--acc)}

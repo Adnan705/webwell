@@ -7,6 +7,7 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/plus-jakarta-sans-latin-400-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/plus-jakarta-sans-latin-600-normal.woff2">
 <script src="landmarks.js"></script>
+<script src="vector-bg.js"></script>
 <script src="boot.js"></script>
 <link rel="stylesheet" href="newtab.css?v=1.7.0">
 </head>
@@ -16,6 +17,7 @@
   <div class="bg" aria-hidden="true">
     <div class="bg-photo hidden" id="bgPhoto"></div>
     <div class="bg-photo hidden" id="bgPhotoB"></div>
+    <div class="bg-vector hidden" id="bgVector"></div>
     <div class="shade hidden" id="bgShade"></div>
     <div class="blob b1"></div>
     <div class="blob b2"></div>
@@ -179,7 +181,7 @@
       <button class="lm-shuffle" id="lmShuffle" title="New background" aria-label="New background">↻</button>
     </div>
   </div>
-  <div class="credit" id="plainCredit">Written &amp; Developed by Adnan · <span id="wwVer2"></span></div>
+  <div class="credit" id="plainCredit">Written &amp; Developed by Adnan · <span id="wwVer2"></span><button class="vec-shuffle hidden" id="vecShuffle" type="button" title="New background" aria-label="New background">↻</button></div>
 
   <!-- First-run name prompt -->
   <div class="name-overlay hidden" id="nameOverlay">

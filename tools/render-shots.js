@@ -9,7 +9,7 @@ fs.mkdirSync(outDir, { recursive: true });
 const BROWSERS = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe'];
 const browser = BROWSERS.find(p => fs.existsSync(p));
 if (!browser) { console.error('No Edge/Chrome found'); process.exit(1); }
-const W = 1600, H = 900, SCALE = 1.5;
+const W = 1600, H = +process.env.WW_H || 900, SCALE = 1.5;
 
 const dk = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const today = new Date(), key = dk(today);
@@ -37,7 +37,7 @@ function makeDays() {
 }
 
 const seed = {
-  profile: { name: 'Alex', theme: 'dusk', bgMode: 'photos', bgPick: { date: key, idx: 3 } },
+  profile: { name: 'Alex', theme: 'dusk', bgMode: process.env.WW_BG || 'photos', vecStyle: process.env.WW_VSTYLE || 'mountains', vecPal: process.env.WW_VPAL || 'dawn', bgPick: { date: key, idx: 3 } },
   settings: { idleTimeout: 60, trackingEnabled: true, darkMode: false, forecastNudge: true },
   days: makeDays(),
   ntBookmarks: [['notion.so', 'https://notion.so'], ['mail.google.com', 'https://mail.google.com'], ['docs.google.com', 'https://docs.google.com'], ['calendar.google.com', 'https://calendar.google.com'], ['github.com', 'https://github.com']]
@@ -73,7 +73,8 @@ const shots = {
     after: `window.__ui(${JSON.stringify(playing)}); document.getElementById('mmOpen').click(); document.querySelector('[data-mtab=music]').click();` },
   'newtab-focus': { page: 'newtab/newtab.html', seed: { ...seed, lockin: { phase: 'focus', task: 'Finish the landing page copy', mins: 25, totalMs: 1500000, startedAt: Date.now() - 420000, endsAt: Date.now() + 1080000, pausedLeft: null, sound: 'rain', block: true, breakMins: 5 } }, after: '' },
   'dashboard': { page: 'dashboard/dashboard.html', hash: '', seed, after: letterTiles },
-  'protect': { page: 'dashboard/dashboard.html', hash: 'protect', seed, after: letterTiles }
+  'protect': { page: 'dashboard/dashboard.html', hash: 'protect', seed, after: letterTiles },
+  'settings': { page: 'dashboard/dashboard.html', hash: 'settings', seed, after: letterTiles + "var v=document.getElementById('vecPicker'); if (v) { var p=v.parentElement; while (p && !/(auto|scroll)/.test(getComputedStyle(p).overflowY)) p=p.parentElement; if (p) p.scrollTop += v.getBoundingClientRect().top - 140; }" }
 };
 
 function stubFor(s) {
@@ -94,7 +95,7 @@ function stubFor(s) {
   };
   window.__ui = function (ui) { cbs.forEach(function (f) { try { f({ target: 'ww-player-ui', ui: ui }); } catch (e) {} }); };
   ${s.hash ? `try { location.hash = '${s.hash}'; } catch (e) {}` : ''}
-  try { localStorage.setItem('ww_boot', JSON.stringify({ v: 1, theme: 'dusk', bgMode: 'photos', name: 'Alex', bgPick: store.profile.bgPick, focus: store.focus || null, tasksDate: '${key}', tasks: (store.tasks && store.tasks['${key}']) || [], bookmarks: store.ntBookmarks, hidden: [], auto: [] })); } catch (e) {}
+  try { localStorage.setItem('ww_boot', JSON.stringify({ v: 1, theme: 'dusk', bgMode: store.profile.bgMode, vecStyle: store.profile.vecStyle, vecPal: store.profile.vecPal, name: 'Alex', bgPick: store.profile.bgPick, focus: store.focus || null, tasksDate: '${key}', tasks: (store.tasks && store.tasks['${key}']) || [], bookmarks: store.ntBookmarks, hidden: [], auto: [] })); } catch (e) {}
   window.addEventListener('load', function () { setTimeout(function () { try { ${s.after || ''} } catch (e) { document.title = 'ACTION ERROR ' + e.message; } }, 700); });
 })();
 </script>`;

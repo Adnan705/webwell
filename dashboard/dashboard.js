@@ -1014,11 +1014,14 @@ async function renderSettings() {
     '</div>' +
     '<div class="card" style="margin-top:16px"><h3>New Tab page</h3>' +
     setRow('Background',
-      'Landmark photos rotate daily — each shows its name and a fact. Gradient uses the animated theme below.',
+      'Landmark photos rotate daily. Vector art is a calm illustrated scene you pick below. Gradient uses the animated theme.',
       '<select class="sel-in" id="setBgMode">' +
         '<option value="photos"' + ((p.bgMode || 'photos') === 'photos' ? ' selected' : '') + '>Landmark photos</option>' +
+        '<option value="vector"' + (p.bgMode === 'vector' ? ' selected' : '') + '>Vector art</option>' +
         '<option value="gradient"' + (p.bgMode === 'gradient' ? ' selected' : '') + '>Animated gradient</option>' +
       '</select>') +
+    '<div class="vec-picker" id="vecPicker"><div class="t">Vector art</div><div class="d">Pick a scene and a colour mood. It applies to your new tab straight away.</div>' +
+      '<div class="vec-tiles" id="vecTiles"></div><div class="vec-pals" id="vecPals"></div></div>' +
     setRow('Gradient theme',
       'The animated gradient behind your new tab page (used when Background is set to gradient).',
       '<select class="sel-in" id="setTheme">' +
@@ -1125,8 +1128,33 @@ async function renderSettings() {
     const prof = Object.assign({ bgMode: 'photos' }, (await storeGet(['profile'])).profile || {});
     prof.bgMode = e.target.value;
     await storeSet({ profile: prof });
-    toast(e.target.value === 'photos' ? 'Landmark photos on.' : 'Animated gradient on.');
+    toast(e.target.value === 'photos' ? 'Landmark photos on.' : e.target.value === 'vector' ? 'Vector art on.' : 'Animated gradient on.');
+    paintVecPicker(prof);
   });
+  // Vector art picker: scenes and palettes, applied immediately.
+  function paintVecPicker(prof) {
+    const V = window.WW_VBG; if (!V) return;
+    const vs = prof.vecStyle || 'mountains', vp = prof.vecPal || 'dawn', on = prof.bgMode === 'vector';
+    const tiles = document.getElementById('vecTiles'), pals = document.getElementById('vecPals');
+    if (!tiles || !pals) return;
+    tiles.innerHTML = V.STYLES.map(s => '<button type="button" class="vec-tile' + (on && s.id === vs ? ' on' : '') + '" data-vstyle="' + s.id + '"><span>' + s.name + '</span></button>').join('');
+    pals.innerHTML = V.PALETTES.map(pl => '<button type="button" class="vec-pal' + (pl.id === vp ? ' on' : '') + '" data-vpal="' + pl.id + '" title="' + pl.name + '" aria-label="' + pl.name + '"></button>').join('');
+    tiles.querySelectorAll('.vec-tile').forEach(b => { b.style.backgroundImage = 'url("' + V.dataUri(b.dataset.vstyle, vp) + '")'; });
+    pals.querySelectorAll('.vec-pal').forEach(b => { const pl = V.pal(b.dataset.vpal); b.style.background = 'linear-gradient(135deg,' + pl.sky[0] + ',' + pl.sky[1] + ' 55%,' + pl.sky[2] + ')'; });
+  }
+  async function saveVec(patch, msg) {
+    const prof = Object.assign({ bgMode: 'photos', vecStyle: 'mountains', vecPal: 'dawn' }, (await storeGet(['profile'])).profile || {}, patch);
+    await storeSet({ profile: prof });
+    const sel = document.getElementById('setBgMode'); if (sel) sel.value = prof.bgMode;
+    paintVecPicker(prof); toast(msg);
+  }
+  (async () => {
+    const prof = Object.assign({ bgMode: 'photos', vecStyle: 'mountains', vecPal: 'dawn' }, (await storeGet(['profile'])).profile || {});
+    paintVecPicker(prof);
+    document.getElementById('vecTiles').addEventListener('click', e => { const b = e.target.closest('[data-vstyle]'); if (b) saveVec({ bgMode: 'vector', vecStyle: b.dataset.vstyle }, b.textContent + ' background on.'); });
+    document.getElementById('vecPals').addEventListener('click', e => { const b = e.target.closest('[data-vpal]'); if (b) saveVec({ bgMode: 'vector', vecPal: b.dataset.vpal }, V_name(b.dataset.vpal) + ' colours on.'); });
+  })();
+  function V_name(id) { return window.WW_VBG ? window.WW_VBG.pal(id).name : id; }
   document.getElementById('picUploadBtn').addEventListener('click', () => {
     document.getElementById('picFile').click();
   });
@@ -1231,7 +1259,7 @@ async function importData(obj) {
   }
   if (isObj(obj.profile)) {
     const keep = {};
-    for (const k of ['name', 'theme', 'bgMode', 'clock24']) if (k in obj.profile) keep[k] = obj.profile[k];
+    for (const k of ['name', 'theme', 'bgMode', 'vecStyle', 'vecPal', 'clock24']) if (k in obj.profile) keep[k] = obj.profile[k];
     out.profile = Object.assign(keep, cur.profile || {});
   }
   if (Array.isArray(obj.ntBookmarks)) {

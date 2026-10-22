@@ -7,9 +7,10 @@
   if (b.v !== 1) b = {};
   window.__WW_BOOT = b;
   var de = document.documentElement;
-  var mode = b.bgMode === 'gradient' ? 'gradient' : 'photos';
+  var mode = b.bgMode === 'gradient' ? 'gradient' : b.bgMode === 'vector' && window.WW_VBG ? 'vector' : 'photos';
   de.setAttribute('data-theme', b.theme || 'dusk');
   de.setAttribute('data-bgmode', mode);
+  if (mode === 'vector') de.style.backgroundColor = window.WW_VBG.base(b.vecPal);
 
   // Start fetching today's photo right now (before CSS/JS are even parsed).
   var L = window.WW_LANDMARKS || [];

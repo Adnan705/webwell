@@ -40,7 +40,7 @@ const store = { get: keys => chrome.storage.local.get(keys) };
 const LANDMARKS = window.WW_LANDMARKS || [];
 const BOOT = window.__WW_BOOT || {};
 
-let profile = { name: '', theme: 'dusk', bgMode: 'photos', bgPick: null, pic: '', clock24: false };
+let profile = { name: '', theme: 'dusk', bgMode: 'photos', vecStyle: 'mountains', vecPal: 'dawn', bgPick: null, pic: '', clock24: false };
 let focus = null;   // { date, text, done }
 let tasks = {};     // { [dateKey]: [{ id, text, done }] }
 let today = '';
@@ -54,7 +54,7 @@ let daysData = {};
 function saveBoot() {
   try {
     localStorage.setItem('ww_boot', JSON.stringify({
-      v: 1, theme: profile.theme, bgMode: profile.bgMode, name: profile.name, bgPick: profile.bgPick, clock24: !!profile.clock24,
+      v: 1, theme: profile.theme, bgMode: profile.bgMode, vecStyle: profile.vecStyle, vecPal: profile.vecPal, name: profile.name, bgPick: profile.bgPick, clock24: !!profile.clock24,
       focus, tasksDate: today, tasks: tasks[today] || [], bookmarks, hidden: bmHidden, auto: autoCache
     }));
   } catch (e) {}
@@ -66,7 +66,9 @@ function hydrateFromBoot() {
   if (BOOT.v !== 1) return;
   profile.name = BOOT.name || '';
   profile.theme = BOOT.theme || 'dusk';
-  profile.bgMode = BOOT.bgMode === 'gradient' ? 'gradient' : 'photos';
+  profile.bgMode = BOOT.bgMode === 'gradient' || BOOT.bgMode === 'vector' ? BOOT.bgMode : 'photos';
+  profile.vecStyle = BOOT.vecStyle || 'mountains';
+  profile.vecPal = BOOT.vecPal || 'dawn';
   profile.bgPick = BOOT.bgPick || null;
   profile.clock24 = !!BOOT.clock24;
   if (BOOT.focus && BOOT.focus.date === today) focus = BOOT.focus;
@@ -77,7 +79,7 @@ function hydrateFromBoot() {
 }
 
 function stateSig() {
-  return JSON.stringify([profile.name, profile.theme, profile.bgMode, profile.bgPick, profile.clock24, focus,
+  return JSON.stringify([profile.name, profile.theme, profile.bgMode, profile.vecStyle, profile.vecPal, profile.bgPick, profile.clock24, focus,
     tasks[today] || [], bookmarks, bmHidden]);
 }
 
@@ -348,12 +350,15 @@ function showLandmark(idx, animate) {
 }
 
 function applyBackground() {
-  const mode = profile.bgMode === 'gradient' ? 'gradient' : 'photos';
+  const m = profile.bgMode;
+  const mode = m === 'gradient' || m === 'vector' ? m : 'photos';
   document.documentElement.setAttribute('data-bgmode', mode);
   const isPhotos = mode === 'photos' && LANDMARKS.length > 0;
-  $('bgShade').classList.toggle('hidden', !isPhotos);
+  const isVector = mode === 'vector' && !!window.WW_VBG;
+  $('bgShade').classList.toggle('hidden', !(isPhotos || isVector));
   $('landmark').classList.toggle('hidden', !isPhotos);
   $('plainCredit').classList.toggle('hidden', isPhotos);
+  $('vecShuffle').classList.toggle('hidden', !isVector);
   if (!isPhotos) {
     $('bgPhoto').classList.add('hidden'); $('bgPhotoB').classList.add('hidden');
     document.documentElement.style.backgroundColor = '';
@@ -361,9 +366,26 @@ function applyBackground() {
   } else {
     showLandmark(pickBgIndex(), false);
   }
+  const vec = $('bgVector');
+  if (isVector) {
+    const V = window.WW_VBG;
+    document.documentElement.style.backgroundColor = V.base(profile.vecPal);
+    vec.style.backgroundImage = 'url("' + V.dataUri(profile.vecStyle, profile.vecPal) + '")';
+    vec.classList.remove('hidden');
+    requestAnimationFrame(() => vec.classList.add('on'));
+  } else {
+    vec.classList.add('hidden'); vec.classList.remove('on');
+  }
 }
 
 function wireShuffle() {
+  $('vecShuffle').addEventListener('click', async () => {
+    if (!window.WW_VBG) return;
+    const n = window.WW_VBG.pick({ style: profile.vecStyle, pal: profile.vecPal });
+    profile.vecStyle = n.style; profile.vecPal = n.pal;
+    applyBackground();
+    await persist({ profile });
+  });
   $('lmShuffle').addEventListener('click', async () => {
     if (LANDMARKS.length < 2) return;
     let next = shownIdx;
