@@ -4,22 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#fbfaf9">
-<title>How to Install WebWell on Chrome or Brave (2 Minutes)</title>
-<meta name="description" content="Install WebWell on Google Chrome or Brave in about two minutes: download, open the extensions page, turn on Developer mode and choose Load unpacked. Free, no account.">
+<title>How to Install WebWell on Chrome or Brave</title>
+<meta name="description" content="Add WebWell to Google Chrome or Brave from the Chrome Web Store in one click. Developers can also install from source on GitHub. Free, no account.">
 <link rel="canonical" href="https://webwell.app/install">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="WebWell">
 <meta property="og:locale" content="en_US">
 <meta property="og:url" content="https://webwell.app/install">
-<meta property="og:title" content="How to Install WebWell on Chrome or Brave (2 Minutes)">
-<meta property="og:description" content="Download, open the extensions page, turn on Developer mode and choose Load unpacked. Free, no account.">
+<meta property="og:title" content="How to Install WebWell on Chrome or Brave">
+<meta property="og:description" content="One click from the Chrome Web Store, or install from source on GitHub. Free, no account.">
 <meta property="og:image" content="https://webwell.app/media/og-webwell-v1.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="How to Install WebWell on Chrome or Brave (2 Minutes)">
-<meta name="twitter:description" content="Download, open the extensions page, turn on Developer mode and choose Load unpacked. Free, no account.">
+<meta name="twitter:title" content="How to Install WebWell on Chrome or Brave">
+<meta name="twitter:description" content="One click from the Chrome Web Store, or install from source on GitHub. Free, no account.">
 <meta name="twitter:image" content="https://webwell.app/media/og-webwell-v1.jpg">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -94,6 +94,8 @@ h1 .serif { font-family: "Instrument Serif", Georgia, serif; font-style: italic;
 .btn-ghost { color: var(--ink); border-color: var(--rule); background: var(--card); }
 .btn-ghost:hover { border-color: var(--ink-3); }
 
+.chrome { width: 18px; height: 18px; border-radius: 50%; flex: none; position: relative; background: conic-gradient(from 30deg, #ea4335 0 120deg, #34a853 0 240deg, #fbbc04 0); }
+.chrome::after { content: ""; position: absolute; inset: 28%; border-radius: 50%; background: #4285f4; box-shadow: 0 0 0 1.5px #fff; }
 .steps { list-style: none; padding: 0; margin: 40px 0 0; display: grid; gap: 14px; counter-reset: s; }
 .step { position: relative; padding: 22px 24px 22px 76px; border: 1px solid var(--rule); border-radius: 20px; background: var(--card); counter-increment: s; }
 .step::before { content: counter(s); position: absolute; left: 22px; top: 22px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 600 .9375rem/1 var(--f-sans); background: var(--coral-soft); color: var(--coral-ink); }
@@ -144,8 +146,11 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 
 <main><div class="wrap"><article class="doc">
   <span class="eyebrow">Install</span>
-  <h1>Install WebWell in <span class="serif">two</span> minutes.</h1>
-  <p class="lede">WebWell isn&rsquo;t in the Chrome Web Store yet, so for now you add it straight from GitHub. It&rsquo;s the same code, it works the same, and it needs no account. Works on Google Chrome and Brave on a computer.</p>
+  <h1>Install WebWell in <span class="serif">one</span> click.</h1>
+  <p class="lede">WebWell is on the Chrome Web Store. Open the page, click Add to Chrome, then open a new tab. Brave uses the same store, so the steps are the same there. It works on a computer, and it needs no account.</p>
+  <div class="actions" style="margin-top:26px;display:flex;flex-wrap:wrap;gap:14px;align-items:center"><a class="btn btn-grad" href="https://chromewebstore.google.com/detail/webwell/mnjakeggjhfdookcdgjdgmamhcobnofi" target="_blank" rel="noopener"><span class="chrome" aria-hidden="true"></span>Add to Chrome, it&rsquo;s free</a><span class="or">Chrome and Brave on desktop</span></div>
+  <h2 class="sec">Or install from source (GitHub)</h2>
+  <p class="lede" style="margin-top:14px">For developers, or if you can&rsquo;t use the store. It&rsquo;s the same code, and takes about two minutes.</p>
 
   <ol class="steps">
     <li class="step">
@@ -181,7 +186,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
   <h2 class="sec">Good to know</h2>
   <ul class="notes">
     <li><b>Keep the folder where it is.</b> WebWell runs from that folder. If you move or delete it, the extension stops working.</li>
-    <li><b>Chrome may ask about Developer mode.</b> When you start Chrome it can show a notice about extensions in developer mode. Choosing to keep it enabled is fine. The Web Store version won&rsquo;t show it.</li>
+    <li><b>Chrome may ask about Developer mode.</b> When you start Chrome it can show a notice about extensions in developer mode. Choosing to keep it enabled is fine. The Chrome Web Store version doesn&rsquo;t show it.</li>
     <li><b>Back up before you remove it.</b> Your stats live only in your browser. In WebWell&rsquo;s Settings, use Export before you remove or reinstall the extension, because removing it erases its data.</li>
     <li><b>Updating.</b> Download the new ZIP, replace the contents of your folder, then press the reload arrow on WebWell&rsquo;s card on the extensions page. Your data stays.</li>
     <li><b>Permissions.</b> WebWell only asks for access to all sites when you switch on a blocking feature. <a class="link" href="/privacy">Read exactly what it stores</a>.</li>
@@ -192,8 +197,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
   <details><summary>I can&rsquo;t see &ldquo;Load unpacked&rdquo;</summary><p>Developer mode is off. Switch it on in the top-right corner of the extensions page and the button appears.</p></details>
   <details><summary>The new tab didn&rsquo;t change</summary><p>Open a fresh tab (not one that was already open). If another extension also replaces the new tab, your browser uses one of them, so turn the other one off on the extensions page.</p></details>
 
-  <h2 class="sec">Tell me when it&rsquo;s in the store</h2>
-  <p class="lede" style="margin-top:14px">The Chrome Web Store version is coming. To hear about it, <a class="link" href="mailto:info.adnanak@gmail.com?subject=Tell%20me%20when%20WebWell%20is%20in%20the%20store">send me an email</a>, or on GitHub choose Watch, then Custom, then Releases.</p>
+  
 </article></div></main>
 
 <footer><div class="wrap foot">

@@ -56,7 +56,11 @@
 - 👤 **Local profile** — your name, picture, and themes; your data stays yours
 - 🐞 **In-app bug reporting**
 
-## 🚀 Install (2 minutes)
+## 🚀 Install
+
+**Easiest: [Add WebWell from the Chrome Web Store](https://chromewebstore.google.com/detail/webwell/mnjakeggjhfdookcdgjdgmamhcobnofi)** (works in Chrome and Brave, one click).
+
+### Or install from source (about 2 minutes)
 
 1. Click the green **Code** button above → **Download ZIP**
 2. **Extract** the downloaded ZIP file (right-click → Extract all)

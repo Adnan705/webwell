@@ -34,7 +34,7 @@
     var el = e.target.closest('a, button'); if (!el) return;
     var href = el.getAttribute('href') || '';
     var p = { location: where(el) };
-    if (el.hasAttribute('data-install') && el.getAttribute('aria-disabled') === 'true') return track('webstore_click', p);
+    if (href.indexOf('chromewebstore.google.com') > -1) return track('webstore_click', p);
     if (href === '/install') return track('install_click', p);
     if (/main\.zip$/.test(href)) return track('download_zip', p);
     if (el.hasAttribute('data-copy')) return track('copy_extensions_url', { target: el.getAttribute('data-copy') });
