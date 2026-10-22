@@ -48,11 +48,19 @@ const hidden = el => el.classList.contains('hidden');
   ok('only three tabs: Saved, Sounds, Music', () => same(tabs(t), ['saved', 'ambient', 'music']));
   ok('first run opens on Sounds (the easiest start)', () => { assert.strictEqual(activeTab(t), 'ambient'); same(visiblePanes(t), ['mtab-ambient']); });
   ok('Saved explains how to save songs', () => assert(t.$('savedList').textContent.includes('Tap the heart')));
-  ok('idle pill says what the play button will do', () => { assert.strictEqual(t.$('mmTitle').textContent, 'Focus music'); assert.strictEqual(t.$('mmSub').textContent, 'Tap play for lofi radio'); });
+  ok('idle pill says what the play button will do', () => { assert.strictEqual(t.$('mmTitle').textContent, 'Focus music'); assert.strictEqual(t.$('mmSub').textContent, 'Tap play for a random sound'); });
   ok('heart is disabled when nothing is playing', () => assert.strictEqual(t.$('miniHeart').disabled, true));
   ok('panel starts closed, opens from the pill, closes on outside click', () => { assert(hidden(t.$('musicCard'))); t.click(t.$('mmOpen')); assert(!hidden(t.$('musicCard'))); t.click(t.w.document.body); assert(hidden(t.$('musicCard'))); });
   t.click(t.$('cdBtn')); await tick();
-  ok('first run: the pill play button starts lofi radio straight away, without opening the picker', () => { same(t.sent.pop(), { target: 'ww-player', cmd: 'play-station', idx: 0 }); assert(hidden(t.$('musicCard'))); });
+  ok('first run: the pill play button starts one of the built-in sounds straight away, without opening the picker', () => {
+    const m = t.sent.pop();
+    assert(m.cmd === 'play-station' ? m.idx === 0 : (m.cmd === 'ambient-play' && ['rain', 'brown', 'waves'].includes(m.kind)), JSON.stringify(m));
+    assert(hidden(t.$('musicCard')));
+  });
+  { const t2 = await boot(); t2.click(t2.$('mmOpen')); t2.click(t2.$('musicPlay')); await tick();
+    ok('first run: the card play button also starts a sound', () => { const m = t2.sent.pop(); assert(m && (m.cmd === 'play-station' || m.cmd === 'ambient-play'), JSON.stringify(m)); }); }
+  { const seen = new Set(); for (let i = 0; i < 40; i++) { const t3 = await boot(); t3.click(t3.$('cdBtn')); await tick(); const m = t3.sent.pop(); seen.add(m.cmd === 'ambient-play' ? 'ambient:' + m.kind : 'station'); }
+    ok('first run: the choice is random across the built-in sounds (saw ' + [...seen].join(', ') + ')', () => assert(seen.size >= 2, [...seen].join())); }
   t.click(t.$('mmOpen'));
   let rows = [...t.$('ambientList').querySelectorAll('.mrow')];
   ok('Sounds = Rain, Soft noise, Waves and one Lofi radio row', () => { assert.strictEqual(rows.length, 4); same(rows.map(r => r.querySelector('.mn').textContent), ['Rain', 'Soft noise', 'Waves', 'Lofi radio']); });

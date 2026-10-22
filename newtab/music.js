@@ -137,7 +137,11 @@ function toggleCurrent() {
   if (!uiState.key && !uiState.playing) {
     if (musicState.last) playItem(musicState.last);
     else if (favs.length) playItem(favs[0]);
-    else playItem(stationItem(musicState.station || 0));
+    else {
+      // First press on a fresh install: play one of the built-in sounds at random.
+      const pool = AMBIENT_SOUNDS.map(ambientItem).concat(stationItem(musicState.station || 0));
+      playItem(pool[Math.floor(Math.random() * pool.length)]);
+    }
     return;
   }
   const tab = uiState.tab;
@@ -172,7 +176,7 @@ function setHeart(btn, item) {
 function renderNow() {
   const idle = !uiState.key && !uiState.playing;
   const title = idle ? 'Focus music' : (cleanTitle(uiState.title) || 'Music');
-  const sub = idle ? (favs.length ? 'Play your saved songs' : 'Tap play for lofi radio') : (uiState.sub || '');
+  const sub = idle ? (favs.length ? 'Play your saved songs' : 'Tap play for a random sound') : (uiState.sub || '');
   const art = idle ? DEFAULT_ART : artSrc(uiState.art);
   $m('mmTitle').textContent = title; $m('mmSub').textContent = sub; $m('discArtImg').src = art;
   $m('musicTitle').textContent = idle ? 'Nothing playing' : title;
