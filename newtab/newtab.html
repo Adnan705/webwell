@@ -262,6 +262,16 @@
 <script src="../lib/spotify.js?v=1.7.1"></script>
 <script src="newtab.js?v=1.7.1"></script>
 <script src="music.js?v=1.7.1"></script>
-<script src="lockin.js?v=1.7.1"></script>
+  <!-- One-time, optional review request (see review.js) -->
+  <div class="review hidden" id="reviewCard" role="dialog" aria-label="Review WebWell">
+    <b>Enjoying WebWell?</b>
+    <span>A short review on the Chrome Web Store helps other people find it.</span>
+    <div class="review-btns">
+      <button type="button" class="rv-yes" id="reviewYes">Leave a review</button>
+      <button type="button" class="rv-ghost" id="reviewLater">Maybe later</button>
+      <button type="button" class="rv-link" id="reviewNo">No thanks</button>
+    </div>
+  </div><script src="lockin.js?v=1.7.1"></script>
+<script src="review.js?v=1.7.1"></script>
 </body>
 </html>

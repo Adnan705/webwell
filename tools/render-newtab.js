@@ -24,6 +24,7 @@ const seed = {
   focusLog: { [key]: { mins: 75, sessions: 2 } }
 };
 if (state === 'no-focus') delete seed.tasks;
+if (process.env.WW_REVIEW) { seed.ntReview = { firstSeen: Date.now() - 5 * 86400000, state: '', nextAt: 0, asked: 0 }; seed.focusLog[key].sessions = 5; }
 if (state === 'default' || state === 'tasks' || state === 'focus-sheet') seed.focus = { date: key, text: 'Finish the landing page copy', done: false };
 if (state === 'focus-running') seed.lockin = { phase: 'focus', task: 'Finish the landing page copy', mins: 25, totalMs: 1500000, startedAt: Date.now() - 420000, endsAt: Date.now() + 1080000, pausedLeft: null, sound: 'rain', block: true, breakMins: 5 };
 if (state === 'focus-done') seed.lockin = { phase: 'done', doneMins: 25, doneAt: Date.now() };

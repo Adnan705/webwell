@@ -267,10 +267,17 @@ async function checkForecastNudge() {
 
 // FIX: these used to run un-serialized, so onInstalled/onStartup and the
 // top-level resync() could overlap on a worker start and double-count a visit.
+// When WebWell is removed, the browser opens this page: one optional question, nothing is sent from the extension.
+const UNINSTALL_URL = 'https://webwell.app/goodbye';
+function registerUninstallPage() {
+  try { if (chrome.runtime.setUninstallURL) chrome.runtime.setUninstallURL(UNINSTALL_URL); } catch (e) {}
+}
+
 chrome.runtime.onInstalled.addListener((details) => serialized(async () => {
   const settings = await getSettings();
   chrome.idle.setDetectionInterval(settings.idleTimeout);
   chrome.alarms.create('webwell-tick', { periodInMinutes: 1 });
+  registerUninstallPage();
   if (details.reason === 'install') {
     chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
   }
@@ -283,6 +290,7 @@ chrome.runtime.onStartup.addListener(() => serialized(async () => {
   const settings = await getSettings();
   chrome.idle.setDetectionInterval(settings.idleTimeout);
   chrome.alarms.create('webwell-tick', { periodInMinutes: 1 });
+  registerUninstallPage();
   await resync();
   syncProtectRules();
   scheduleLockin();

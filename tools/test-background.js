@@ -13,7 +13,7 @@ const local = area(), session = area();
 const changedListeners = [];
 area.fire = (a, ch) => changedListeners.forEach(f => f(ch, a));
 
-const calls = { alarms: [], cleared: [], notifications: [], badge: [], dnrEnabled: [], scriptsRegistered: [], scriptsUnregistered: [], sent: [], created: [] };
+const calls = { alarms: [], cleared: [], notifications: [], badge: [], dnrEnabled: [], scriptsRegistered: [], scriptsUnregistered: [], sent: [], created: [], uninstall: [] };
 let dyn = [], sess = [], granted = true, activeTab = null, focusedWindow = true;
 const L = {};   // captured listeners
 const ev = name => ({ addListener: f => { (L[name] = L[name] || []).push(f); } });
@@ -24,7 +24,7 @@ const chrome = {
   tabs: { onActivated: ev('tabAct'), onUpdated: ev('tabUpd'), onRemoved: ev('tabRem'), query: async () => activeTab ? [activeTab] : [], create: o => calls.created.push(o) },
   windows: { onFocusChanged: ev('winFocus'), WINDOW_ID_NONE: -1, getAll: async () => focusedWindow && activeTab ? [{ focused: true, tabs: [activeTab] }] : [] },
   idle: { onStateChanged: ev('idle'), setDetectionInterval() {}, queryState: async () => 'active' },
-  runtime: { onInstalled: ev('installed'), onStartup: ev('startup'), onMessage: ev('msg'), getURL: p => 'chrome-extension://x/' + p, sendMessage: m => { calls.sent.push(m); return Promise.resolve(); } },
+  runtime: { onInstalled: ev('installed'), onStartup: ev('startup'), onMessage: ev('msg'), getURL: p => 'chrome-extension://x/' + p, sendMessage: m => { calls.sent.push(m); return Promise.resolve(); }, setUninstallURL: u => { calls.uninstall.push(u); } },
   notifications: { create: (id, o) => calls.notifications.push({ id, o }) },
   action: { setBadgeText: async o => calls.badge.push(o.text), setBadgeBackgroundColor: async () => {}, setBadgeTextColor: async () => {} },
   offscreen: { hasDocument: async () => true, createDocument: async () => {} },
@@ -56,6 +56,9 @@ const ok = (name, fn) => { try { fn(); n++; console.log('ok   ' + name); } catch
   // ---- startup ----
   L.installed.forEach(f => f({ reason: 'update' })); await tick(120);
   ok('install/update creates the 1-minute tick alarm', () => assert(calls.alarms.some(a => a.n === 'webwell-tick' && a.i.periodInMinutes === 1)));
+  ok('install/update registers the goodbye page for when WebWell is removed', () => assert.strictEqual(calls.uninstall[calls.uninstall.length - 1], 'https://webwell.app/goodbye'));
+  ok('the goodbye page address carries nothing about the user', () => { const u = new URL(calls.uninstall[calls.uninstall.length - 1]); assert.strictEqual(u.search + u.hash, ''); assert(u.protocol === 'https:' && u.href.length < 1000); });
+  { const n = calls.uninstall.length; L.startup.forEach(f => f()); await tick(120); ok('browser start re-registers the goodbye page', () => assert(calls.uninstall.length > n)); }
 
   // ---- browsing-time tracking still works ----
   activeTab = { id: 7, active: true, url: 'https://github.com/x/y' };
