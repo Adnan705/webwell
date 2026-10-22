@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#fbfaf9">
+<title>What Permissions Do New Tab and Focus Extensions Really Ask For? (Data Study) | WebWell</title>
+<meta name="description" content="We read the public manifests of seven open-source new tab, focus and blocker extensions. See what each asks for, what is optional, and how to audit any extension.">
+<link rel="canonical" href="https://webwell.app/blog/extension-permissions-study">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="WebWell">
+<meta property="og:url" content="https://webwell.app/blog/extension-permissions-study">
+<meta property="og:title" content="What Permissions Do New Tab and Focus Extensions Really Ask For? (Data Study) | WebWell">
+<meta property="og:description" content="We read the public manifests of seven open-source new tab, focus and blocker extensions. See what each asks for, what is optional, and how to audit any extension.">
+<meta property="og:image" content="https://webwell.app/media/og-permissions-study.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What Permissions Do New Tab and Focus Extensions Really Ask For? (Data Study) | WebWell">
+<meta name="twitter:description" content="We read the public manifests of seven open-source new tab, focus and blocker extensions. See what each asks for, what is optional, and how to audit any extension.">
+<meta name="twitter:image" content="https://webwell.app/media/og-permissions-study.jpg">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="alternate" type="application/rss+xml" title="WebWell blog" href="/blog/feed.xml">
+<link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/blog/blog.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BlogPosting","@id":"https://webwell.app/blog/extension-permissions-study#article","headline":"What Permissions Do New Tab and Focus Extensions Really Ask For? (Data Study)","description":"We read the public manifests of seven open-source new tab, focus and blocker extensions. See what each asks for, what is optional, and how to audit any extension.","url":"https://webwell.app/blog/extension-permissions-study","mainEntityOfPage":"https://webwell.app/blog/extension-permissions-study","image":"https://webwell.app/media/og-permissions-study.jpg","datePublished":"2026-10-23","dateModified":"2026-10-23","inLanguage":"en","author":{"@type":"Person","@id":"https://webwell.app/#maker","name":"Adnan","url":"https://github.com/Adnan705"},"publisher":{"@id":"https://webwell.app/#organization"},"isPartOf":{"@id":"https://webwell.app/blog#blog"}},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"WebWell","item":"https://webwell.app/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://webwell.app/blog"},{"@type":"ListItem","position":3,"name":"What Permissions Do New Tab and Focus Extensions Really Ask For? (Data Study)","item":"https://webwell.app/blog/extension-permissions-study"}]},{"@type":"Dataset","name":"Permissions requested by seven open-source new tab and focus browser extensions (2026-10-22)","description":"Required and optional permissions, all-sites access, manifest version, licence and last-push date for seven open-source Chrome extensions, read from their public manifest.json files on 2026-10-22.","url":"https://webwell.app/blog/extension-permissions-study","creator":{"@id":"https://webwell.app/#maker"},"publisher":{"@id":"https://webwell.app/#organization"},"datePublished":"2026-10-23","dateModified":"2026-10-23","license":"https://creativecommons.org/licenses/by/4.0/","isAccessibleForFree":true,"inLanguage":"en","keywords":["browser extensions","permissions","manifest.json","privacy","new tab","Chrome","Manifest V3"],"variableMeasured":["required permissions","optional permissions","all-sites access","manifest version","last push"],"distribution":[{"@type":"DataDownload","encodingFormat":"text/csv","contentUrl":"https://webwell.app/media/extension-permissions-2026-10.csv"}]}]}</script>
+<script>try { if (localStorage.getItem("ww-theme") === "dark") document.documentElement.setAttribute("data-theme", "dark"); } catch (e) {}</script>
+</head>
+<body>
+<div class="nav-shell"><div class="wrap">
+  <header class="nav">
+    <a class="brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28">WebWell</a>
+    <nav class="nav-end" aria-label="Main">
+      <a href="/" class="hide-sm">Home</a><a href="/blog">Blog</a><a href="/install">Install</a>
+      <button class="theme-btn" id="theme-btn" type="button" aria-label="Switch to dark mode">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+      </button>
+    </nav>
+  </header>
+</div></div>
+
+<main><div class="wrap"><article class="doc">
+  <p class="crumbs"><a href="/blog">Blog</a> &middot; Data study</p>
+  <h1>What permissions do new tab and focus extensions <span class="serif">really</span> ask for?</h1>
+  <p class="byline">By Adnan &middot; <time datetime="2026-10-23">October 23, 2026</time> &middot; 13 min read</p>
+  
+<p class="lede">Every browser extension has to declare what it can do. That declaration, a file called <code>manifest.json</code>, is public for open-source projects, so anyone can read it. We read it for seven popular open-source new tab, focus and blocking extensions and put the results in one place: what each one asks for, which asks are optional, and what the pattern says about how to judge an extension.</p>
+<p class="note">Disclosure: I make WebWell, and it is one of the seven. It is also the extension that asks for the most required permissions, and I haven't hidden that. The data is from public files that anyone can download, the method is below, and a CSV of the full dataset is free to use.</p>
+
+<nav class="toc" aria-label="Contents"><b>In this article</b><ol>
+<li><a href="#findings">Key findings</a></li>
+<li><a href="#why">Why this is worth checking</a></li>
+<li><a href="#method">How we did it (and how to repeat it)</a></li>
+<li><a href="#data">The data</a></li>
+<li><a href="#detail">What the numbers show</a></li>
+<li><a href="#glossary">Every permission, in plain English</a></li>
+<li><a href="#audit">How to audit any extension in five minutes</a></li>
+<li><a href="#limits">Limits, and how to correct us</a></li>
+<li><a href="#use">Use this data</a></li>
+<li><a href="#faq">Questions</a></li></ol></nav>
+
+<h2 id="findings">Key findings</h2>
+<div class="stats">
+<div class="stat"><b>7</b><span>open-source extensions read, from new tab pages to site blockers</span></div>
+<div class="stat"><b>1</b><span>permission (<code>storage</code>) is all the two plain new tab pages ask for up front</span></div>
+<div class="stat"><b>2 of 7</b><span>require access to every website at install</span></div>
+<div class="stat"><b>4</b><span>is the median number of required permissions</span></div>
+</div>
+<ul>
+<li><b>Everything asks for <code>storage</code>,</b> and only storage separates the quietest extensions from the rest.</li>
+<li><b>Features, not size, decide the ask.</b> The extensions that track or block your time need <code>tabs</code> or <code>webNavigation</code> (3 of 7); the pure new tab pages do not.</li>
+<li><b>Access to all websites is the real split:</b> 2 extensions require it at install (LeechBlock NG and ActivityWatch Web Watcher), 2 ask only when you turn a feature on (News Feed Eradicator and WebWell), and 3 never ask (Tabliss, Bonjourr, Marinara).</li>
+<li><b>A permission count is a poor safety score.</b> WebWell lists 11 required permissions but makes all-sites access optional. LeechBlock NG lists 6 and requires all-sites access.</li>
+<li><b>Maintenance varies a lot:</b> 5 of 7 projects had code pushed in the 90 days before our snapshot. One repository (Marinara) still ships a Manifest V2 manifest and has not changed since 2023-05-28.</li>
+</ul>
+
+<h2 id="why">Why this is worth checking</h2>
+<p>An extension runs inside the program you use for almost everything: email, banking, work. A new tab page looks harmless, but depending on what it asks for, an extension can see which sites you visit, read what is on a page, or change it. Most people accept the install prompt without reading it, and the store listing seldom explains why each permission is there.</p>
+<p>The question is not "is this extension safe?", which a permission list cannot answer. It is smaller and easier: <b>does what it asks for match what it does?</b> A clock does not need to read every page. A site blocker has a real reason to see which address you are visiting. This study maps those asks so you can make the comparison yourself.</p>
+
+<h2 id="method">How we did it (and how to repeat it)</h2>
+<p>We picked seven open-source extensions in four categories that people use to feel calmer or more focused: new tab pages, a Pomodoro timer, site and feed blockers, and a time tracker. We used open-source projects on purpose, because their manifests are public on GitHub and anyone can check our numbers. For each one we downloaded the manifest from the project's default branch on <b>2026-10-22</b> and recorded:</p>
+<ul>
+<li>the <b>required</b> permissions (granted when you install),</li>
+<li>the <b>optional</b> permissions (requested later, when you use a feature),</li>
+<li>whether it asks for access to <b>all websites</b>, and whether that is required or optional,</li>
+<li>whether it replaces the new tab page, plus its licence, version and the date of its last code change.</li>
+</ul>
+<p>We read the Chromium (Chrome and Brave) version where a project ships separate manifests. To repeat the check, download each file yourself:</p>
+<pre><code># Tabliss
+curl -s https://raw.githubusercontent.com/joelshepherd/tabliss/main/target/chromium/manifest.json
+# Bonjourr
+curl -s https://raw.githubusercontent.com/victrme/Bonjourr/master/src/manifests/chrome.json
+# News Feed Eradicator
+curl -s https://raw.githubusercontent.com/jordwest/news-feed-eradicator/main/src/manifest.ts
+# Marinara
+curl -s https://raw.githubusercontent.com/schmich/marinara/master/package/manifest.json
+# LeechBlock NG
+curl -s https://raw.githubusercontent.com/proginosko/LeechBlockNG/master/manifest.json
+# ActivityWatch Web Watcher
+curl -s https://raw.githubusercontent.com/ActivityWatch/aw-watcher-web/master/src/manifest.json
+# WebWell
+curl -s https://raw.githubusercontent.com/Adnan705/webwell/main/manifest.json</code></pre>
+<p>Two files need a note. ActivityWatch writes one source manifest for several browsers, so we used the keys marked for Chrome. News Feed Eradicator generates its manifest from a TypeScript file. Because default branches move on, files you download later may differ from our snapshot, which is why every figure here carries a date.</p>
+
+<h2 id="data">The data</h2>
+<figure class="figure">
+<svg class="matrix" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1302 706" role="img" aria-labelledby="t d" font-family="Geist, system-ui, Segoe UI, sans-serif">
+<title id="t">Permissions requested by seven open-source new tab and focus extensions</title>
+<desc id="d">A grid with one row per extension and one column per permission. A filled circle means the permission is required at install, a ring means it is optional. Tabliss and Bonjourr require only storage. LeechBlock NG and ActivityWatch Web Watcher require access to all sites. WebWell requires the most named permissions, eleven, and makes all-sites access optional.</desc>
+<rect width="1302" height="706" fill="#ffffff"/>
+<text x="24" y="42" font-size="26" font-weight="700" fill="#18171c" letter-spacing="-0.5">What do new tab and focus extensions ask for?</text>
+<text x="24" y="68" font-size="14" fill="#6e6b74">Permissions in the public manifest.json of seven open-source extensions, 2026-10-22. Chromium builds.</text><text transform="translate(277,178) rotate(-52)" font-size="13" fill="#18171c">storage</text><text transform="translate(323,178) rotate(-52)" font-size="13" fill="#18171c">alarms</text><text transform="translate(369,178) rotate(-52)" font-size="13" fill="#18171c">tabs</text><text transform="translate(415,178) rotate(-52)" font-size="13" fill="#18171c">notifications</text><text transform="translate(461,178) rotate(-52)" font-size="13" fill="#18171c">webNavigation</text><text transform="translate(507,178) rotate(-52)" font-size="13" fill="#18171c">scripting</text><text transform="translate(553,178) rotate(-52)" font-size="13" fill="#18171c">offscreen</text><text transform="translate(599,178) rotate(-52)" font-size="13" fill="#18171c">idle</text><text transform="translate(645,178) rotate(-52)" font-size="13" fill="#18171c">favicon</text><text transform="translate(691,178) rotate(-52)" font-size="13" fill="#18171c">declarativeNetRequest</text><text transform="translate(737,178) rotate(-52)" font-size="13" fill="#18171c">search</text><text transform="translate(783,178) rotate(-52)" font-size="13" fill="#18171c">activeTab</text><text transform="translate(829,178) rotate(-52)" font-size="13" fill="#18171c">context menu</text><text transform="translate(875,178) rotate(-52)" font-size="13" fill="#18171c">unlimitedStorage</text><text transform="translate(921,178) rotate(-52)" font-size="13" fill="#18171c">bookmarks</text><text transform="translate(967,178) rotate(-52)" font-size="13" fill="#18171c">topSites</text><text transform="translate(1013,178) rotate(-52)" font-size="13" fill="#18171c">history</text><text x="1107" y="152" font-size="13" font-weight="700" fill="#18171c" text-anchor="middle">Access to</text><text x="1107" y="170" font-size="13" font-weight="700" fill="#18171c" text-anchor="middle">all websites</text><text x="1227" y="152" font-size="13" font-weight="700" fill="#18171c" text-anchor="middle">Required</text><text x="1227" y="170" font-size="13" font-weight="700" fill="#18171c" text-anchor="middle">permissions</text><rect x="12" y="190" width="1278" height="58" rx="10" fill="#faf8f6"/><text x="26" y="217" font-size="16" font-weight="600" fill="#18171c">Bonjourr</text><text x="26" y="235" font-size="12" fill="#6e6b74">New tab</text><circle cx="273" cy="219" r="9.5" fill="#e8553f"/><circle cx="319" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="365" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="411" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="457" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="503" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="549" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="595" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="641" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="687" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="733" cy="219" r="8.5" fill="none" stroke="#e8553f" stroke-width="2.4"/><circle cx="779" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="825" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="871" cy="219" r="2.6" fill="#e9e6e3"/><circle cx="917" cy="219" r="8.5" fill="none" stroke="#e8553f" stroke-width="2.4"/><circle cx="963" cy="219" r="8.5" fill="none" stroke="#e8553f" stroke-width="2.4"/><circle cx="1009" cy="219" r="2.6" fill="#e9e6e3"/><text x="1107" y="224" font-size="14" fill="#6e6b74" text-anchor="middle">none</text><text x="1227" y="227" font-size="26" font-weight="700" fill="#18171c" text-anchor="middle">1</text><text x="26" y="275" font-size="16" font-weight="600" fill="#18171c">Tabliss</text><text x="26" y="293" font-size="12" fill="#6e6b74">New tab</text><circle cx="273" cy="277" r="9.5" fill="#e8553f"/><circle cx="319" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="365" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="411" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="457" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="503" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="549" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="595" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="641" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="687" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="733" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="779" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="825" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="871" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="917" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="963" cy="277" r="2.6" fill="#e9e6e3"/><circle cx="1009" cy="277" r="2.6" fill="#e9e6e3"/><text x="1107" y="282" font-size="14" fill="#6e6b74" text-anchor="middle">none</text><text x="1227" y="285" font-size="26" font-weight="700" fill="#18171c" text-anchor="middle">1</text><rect x="12" y="306" width="1278" height="58" rx="10" fill="#faf8f6"/><text x="26" y="333" font-size="16" font-weight="600" fill="#18171c">News Feed Eradicator</text><text x="26" y="351" font-size="12" fill="#6e6b74">Feed blocker</text><circle cx="273" cy="335" r="9.5" fill="#e8553f"/><circle cx="319" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="365" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="411" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="457" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="503" cy="335" r="9.5" fill="#e8553f"/><circle cx="549" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="595" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="641" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="687" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="733" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="779" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="825" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="871" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="917" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="963" cy="335" r="2.6" fill="#e9e6e3"/><circle cx="1009" cy="335" r="2.6" fill="#e9e6e3"/><rect x="1055" y="321" width="104" height="28" rx="14" fill="none" stroke="#18171c" stroke-width="2"/><text x="1107" y="340" font-size="13" font-weight="600" fill="#18171c" text-anchor="middle">optional</text><text x="1227" y="343" font-size="26" font-weight="700" fill="#18171c" text-anchor="middle">2</text><text x="26" y="391" font-size="16" font-weight="600" fill="#18171c">Marinara</text><text x="26" y="409" font-size="12" fill="#6e6b74">Pomodoro timer</text><circle cx="273" cy="393" r="9.5" fill="#e8553f"/><circle cx="319" cy="393" r="9.5" fill="#e8553f"/><circle cx="365" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="411" cy="393" r="9.5" fill="#e8553f"/><circle cx="457" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="503" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="549" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="595" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="641" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="687" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="733" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="779" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="825" cy="393" r="9.5" fill="#e8553f"/><circle cx="871" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="917" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="963" cy="393" r="2.6" fill="#e9e6e3"/><circle cx="1009" cy="393" r="2.6" fill="#e9e6e3"/><text x="1107" y="398" font-size="14" fill="#6e6b74" text-anchor="middle">none</text><text x="1227" y="401" font-size="26" font-weight="700" fill="#18171c" text-anchor="middle">4</text><rect x="12" y="422" width="1278" height="58" rx="10" fill="#faf8f6"/><text x="26" y="449" font-size="16" font-weight="600" fill="#18171c">ActivityWatch Web</text><text x="26" y="467" font-size="12" fill="#6e6b74">Time tracker</text><circle cx="273" cy="451" r="9.5" fill="#e8553f"/><circle cx="319" cy="451" r="9.5" fill="#e8553f"/><circle cx="365" cy="451" r="9.5" fill="#e8553f"/><circle cx="411" cy="451" r="9.5" fill="#e8553f"/><circle cx="457" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="503" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="549" cy="451" r="9.5" fill="#e8553f"/><circle cx="595" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="641" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="687" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="733" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="779" cy="451" r="9.5" fill="#e8553f"/><circle cx="825" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="871" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="917" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="963" cy="451" r="2.6" fill="#e9e6e3"/><circle cx="1009" cy="451" r="2.6" fill="#e9e6e3"/><rect x="1055" y="437" width="104" height="28" rx="14" fill="#18171c"/><text x="1107" y="456" font-size="13" font-weight="600" fill="#fff" text-anchor="middle">required</text><text x="1227" y="459" font-size="26" font-weight="700" fill="#18171c" text-anchor="middle">6</text><text x="26" y="507" font-size="16" font-weight="600" fill="#18171c">LeechBlock NG</text><text x="26" y="525" font-size="12" fill="#6e6b74">Site blocker</text><circle cx="273" cy="509" r="9.5" fill="#e8553f"/><circle cx="319" cy="509" r="9.5" fill="#e8553f"/><circle cx="365" cy="509" r="9.5" fill="#e8553f"/><circle cx="411" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="457" cy="509" r="9.5" fill="#e8553f"/><circle cx="503" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="549" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="595" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="641" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="687" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="733" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="779" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="825" cy="509" r="9.5" fill="#e8553f"/><circle cx="871" cy="509" r="9.5" fill="#e8553f"/><circle cx="917" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="963" cy="509" r="2.6" fill="#e9e6e3"/><circle cx="1009" cy="509" r="8.5" fill="none" stroke="#e8553f" stroke-width="2.4"/><rect x="1055" y="495" width="104" height="28" rx="14" fill="#18171c"/><text x="1107" y="514" font-size="13" font-weight="600" fill="#fff" text-anchor="middle">required</text><text x="1227" y="517" font-size="26" font-weight="700" fill="#18171c" text-anchor="middle">6</text><rect x="12" y="538" width="1278" height="58" rx="10" fill="#faf8f6"/><text x="26" y="565" font-size="16" font-weight="700" fill="#18171c">WebWell</text><text x="26" y="583" font-size="12" fill="#6e6b74">New tab + focus + blocker</text><circle cx="273" cy="567" r="9.5" fill="#e8553f"/><circle cx="319" cy="567" r="9.5" fill="#e8553f"/><circle cx="365" cy="567" r="9.5" fill="#e8553f"/><circle cx="411" cy="567" r="9.5" fill="#e8553f"/><circle cx="457" cy="567" r="9.5" fill="#e8553f"/><circle cx="503" cy="567" r="9.5" fill="#e8553f"/><circle cx="549" cy="567" r="9.5" fill="#e8553f"/><circle cx="595" cy="567" r="9.5" fill="#e8553f"/><circle cx="641" cy="567" r="9.5" fill="#e8553f"/><circle cx="687" cy="567" r="9.5" fill="#e8553f"/><circle cx="733" cy="567" r="9.5" fill="#e8553f"/><circle cx="779" cy="567" r="2.6" fill="#e9e6e3"/><circle cx="825" cy="567" r="2.6" fill="#e9e6e3"/><circle cx="871" cy="567" r="2.6" fill="#e9e6e3"/><circle cx="917" cy="567" r="2.6" fill="#e9e6e3"/><circle cx="963" cy="567" r="2.6" fill="#e9e6e3"/><circle cx="1009" cy="567" r="2.6" fill="#e9e6e3"/><rect x="1055" y="553" width="104" height="28" rx="14" fill="none" stroke="#18171c" stroke-width="2"/><text x="1107" y="572" font-size="13" font-weight="600" fill="#18171c" text-anchor="middle">optional</text><text x="1227" y="575" font-size="26" font-weight="700" fill="#e8553f" text-anchor="middle">11</text><circle cx="38" cy="636" r="9" fill="#e8553f"/><text x="56" y="641" font-size="14" fill="#18171c">required when you install</text><circle cx="276" cy="636" r="8" fill="none" stroke="#e8553f" stroke-width="2.4"/><text x="294" y="641" font-size="14" fill="#18171c">optional, asked for only when you use a feature</text><text x="24" y="676" font-size="13" fill="#6e6b74">Source: each project's public manifest on GitHub. WebWell is made by the author of this chart. webwell.app/blog/extension-permissions-study</text></svg>
+</figure>
+<p class="caption">Required and optional permissions, grouped by extension. Source: each project's public manifest, 2026-10-22. Save the image or copy the embed code at the end of this article.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Extension</th><th>Required permissions</th><th>All-sites access</th><th>Optional</th><th>Last push</th><th>Licence</th></tr></thead>
+<tbody>
+<tr><td><b>Bonjourr</b><br><small>New tab</small></td><td>storage</td><td>None</td><td>bookmarks, topSites, search</td><td>2026-10-20</td><td>GPL-3.0</td></tr>
+<tr><td><b>Tabliss</b><br><small>New tab</small></td><td>storage</td><td>None</td><td>none</td><td>2024-08-19</td><td>GPL-3.0</td></tr>
+<tr><td><b>News Feed Eradicator</b><br><small>Feed blocker</small></td><td>storage, scripting</td><td>Optional</td><td>none</td><td>2026-08-23</td><td>AGPL-3.0</td></tr>
+<tr><td><b>Marinara</b><br><small>Pomodoro timer</small></td><td>alarms, contextMenus, storage, notifications</td><td>None</td><td>none</td><td>2023-05-28</td><td>MIT</td></tr>
+<tr><td><b>ActivityWatch Web Watcher</b><br><small>Time tracker</small></td><td>tabs, alarms, notifications, activeTab, offscreen, storage</td><td>Required</td><td>none</td><td>2026-10-22</td><td>MPL-2.0</td></tr>
+<tr><td><b>LeechBlock NG</b><br><small>Site blocker</small></td><td>alarms, menus, storage, tabs, unlimitedStorage, webNavigation</td><td>Required</td><td>history</td><td>2026-09-27</td><td>MPL-2.0</td></tr>
+<tr><td><b>WebWell</b><br><small>New tab + focus + blocker + tracker</small></td><td>tabs, storage, idle, alarms, notifications, offscreen, favicon, declarativeNetRequest, scripting, webNavigation, search</td><td>Optional</td><td>none</td><td>2026-10-22</td><td>MIT</td></tr>
+</tbody></table></div>
+<p class="caption">WebWell also names four specific services it can contact (the Google Gemini API, SoundCloud and Spotify's embedded player). Last push is the date of the latest change to the repository, not a release date.</p>
+<p><a class="btn" href="/media/extension-permissions-2026-10.csv" download>Download the data (CSV)</a></p>
+
+<h2 id="detail">What the numbers show</h2>
+<h3>1. The two plain new tab pages ask for almost nothing</h3>
+<p><b>Tabliss</b> requires only <code>storage</code>, and <b>Bonjourr</b> requires only <code>storage</code> too, with three optional extras (<code>bookmarks</code>, <code>topSites</code> and <code>search</code>) that it asks for when you use the matching feature. Both replace your new tab page and neither requests access to any website. If all you want is a calm page with a clock and a photo, this is the baseline, and anything that asks for much more should be able to say why.</p>
+
+<h3>2. Permissions follow features</h3>
+<p>Once an extension needs to know <i>where you are</i> in the browser, the ask grows. LeechBlock NG, ActivityWatch Web Watcher, WebWell request <code>tabs</code> and/or <code>webNavigation</code>, because tracking time or blocking a site starts with knowing the address of the page. Those are exactly the permissions that Chrome words as reading your browsing history. That is not suspicious by itself: it is what the feature costs. It is a reason to check what the extension says it does with that information.</p>
+
+<h3>3. All-sites access is the real dividing line</h3>
+<p>Access to every website is the broadest permission on the list: Chrome describes it as being able to read and change your data on all websites. The seven split three ways:</p>
+<ul>
+<li><b>Required at install (2):</b> LeechBlock NG, ActivityWatch Web Watcher. For a site blocker or a tracker that watches every tab, this follows from the job, but it also means you grant it before you have used a feature.</li>
+<li><b>Optional (2):</b> News Feed Eradicator, WebWell. The extension asks only when you switch on a feature that needs it, and works without it until then.</li>
+<li><b>Never requested (3):</b> Tabliss, Bonjourr, Marinara.</li>
+</ul>
+<p>The optional model is better for you as a user, because the permission arrives with a reason and you can say no. It costs the developer some convenience, which is probably why it is not the norm.</p>
+
+<h3>4. A permission count is a poor safety score</h3>
+<p>It is tempting to rank extensions by how many permissions they list. The data argues against it. WebWell lists the most required permissions (11) but keeps all-sites access optional. LeechBlock NG lists 6 and requires access to every website. Most of what WebWell asks for is individually narrow: <code>alarms</code>, <code>idle</code> and <code>offscreen</code>, for example, have no install warning of their own. What matters is what a permission lets the extension see or change, not how many there are.</p>
+<p>Since WebWell is mine, here is why it lists eleven. It is a new tab page, a focus timer, a site and short-video blocker, a time tracker and a music player in one extension, and each feature needs its own few permissions. The <a href="/privacy">privacy policy</a> explains each one, and all the code is public, so you can check the claim instead of trusting it. If you only want a new tab page, Tabliss or Bonjourr will ask you for far less, and that is a fair reason to choose either.</p>
+
+<h3>5. Maintenance matters as much as permissions</h3>
+<p>An extension with a tiny permission list is still a risk if nobody maintains it. 5 of the 7 repositories saw code changes in the 90 days before our snapshot. <b>Marinara</b>'s repository still ships a Manifest V2 manifest and has not changed since 2023-05-28, so what is in the store may differ from what is on GitHub. <b>Tabliss</b> uses Manifest V3 but has had no code pushed since 2024-08-19. Neither fact says an extension is unsafe, but both belong in a decision, and the store page's "last updated" date is worth a look.</p>
+
+<h3>6. Open source is what made this possible</h3>
+<p>All seven are open source, and licences range from MIT to AGPL. That is why anyone can repeat this work. Closed-source extensions can also be inspected once installed, but they are harder to compare side by side, and a public manifest on GitHub does not prove that the store build matches it. Open source narrows that gap: you can read the code, build it yourself, and check for differences.</p>
+
+<h2 id="glossary">Every permission, in plain English</h2>
+<p>These are all the permissions that appear in the dataset, with what each allows and which of the seven require it. Chrome shows an install warning for some of them (all-sites access, <code>history</code>, <code>bookmarks</code>, <code>topSites</code> and <code>tabs</code> are the ones to watch for) and none for others, such as <code>storage</code> and <code>alarms</code>.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Permission</th><th>What it lets the extension do</th><th>Required by</th></tr></thead>
+<tbody>
+<tr><td><code>storage</code></td><td>Save the extension’s own settings and data inside your browser.</td><td>Tabliss, Bonjourr, News Feed Eradicator, Marinara, LeechBlock NG, ActivityWatch Web Watcher, WebWell</td></tr>
+<tr><td><code>alarms</code></td><td>Wake the extension up at set times, which is how timers and reminders work.</td><td>Marinara, LeechBlock NG, ActivityWatch Web Watcher, WebWell</td></tr>
+<tr><td><code>tabs</code></td><td>See the address and title of your open tabs, and open, move or close them. Chrome describes this as reading your browsing history.</td><td>LeechBlock NG, ActivityWatch Web Watcher, WebWell</td></tr>
+<tr><td><code>notifications</code></td><td>Show desktop notifications.</td><td>Marinara, ActivityWatch Web Watcher, WebWell</td></tr>
+<tr><td><code>webNavigation</code></td><td>Be told when you move between pages, including the address you are going to. Also described as reading your browsing history.</td><td>LeechBlock NG, WebWell</td></tr>
+<tr><td><code>scripting</code></td><td>Run code inside web pages. By itself it reaches nothing: it only works on sites the extension also has access to.</td><td>News Feed Eradicator, WebWell</td></tr>
+<tr><td><code>offscreen</code></td><td>Open a hidden page, used for things a Manifest V3 background worker cannot do, such as playing audio.</td><td>ActivityWatch Web Watcher, WebWell</td></tr>
+<tr><td><code>idle</code></td><td>Know when you are away from the computer or your screen is locked.</td><td>WebWell</td></tr>
+<tr><td><code>favicon</code></td><td>Read website icons from the browser’s own cache.</td><td>WebWell</td></tr>
+<tr><td><code>declarativeNetRequest</code></td><td>Block or redirect web requests using rules that the browser applies itself. The extension does not read the pages.</td><td>WebWell</td></tr>
+<tr><td><code>search</code></td><td>Run a search with your default search engine.</td><td>WebWell<br><small>Optional: Bonjourr</small></td></tr>
+<tr><td><code>activeTab</code></td><td>Temporary access to the tab you are on, granted when you click the extension.</td><td>ActivityWatch Web Watcher</td></tr>
+<tr><td><code>context menu</code></td><td>Add items to the right-click menu. Listed as <code>contextMenus</code> in Chrome and <code>menus</code> in Firefox-style manifests.</td><td>Marinara, LeechBlock NG</td></tr>
+<tr><td><code>unlimitedStorage</code></td><td>Store more data than the normal browser quota.</td><td>LeechBlock NG</td></tr>
+<tr><td><code>bookmarks</code></td><td>Read, and optionally change, your bookmarks.</td><td>none of the seven<br><small>Optional: Bonjourr</small></td></tr>
+<tr><td><code>topSites</code></td><td>Read a list of the sites you visit most.</td><td>none of the seven<br><small>Optional: Bonjourr</small></td></tr>
+<tr><td><code>history</code></td><td>Read and change your browsing history.</td><td>none of the seven<br><small>Optional: LeechBlock NG</small></td></tr>
+<tr><td><code>&lt;all_urls&gt;</code></td><td>Read and change data on every website you visit. The broadest permission here.</td><td>LeechBlock NG, ActivityWatch Web Watcher<br><small>Optional: News Feed Eradicator, WebWell</small></td></tr>
+</tbody></table></div>
+
+<h2 id="audit">How to audit any extension in five minutes</h2>
+<ol>
+<li><b>Read the install prompt.</b> Chrome lists what the extension can do before you click Add. Treat "read and change all your data on all websites" as a question, not a formality.</li>
+<li><b>Look at site access after install.</b> Open <code>chrome://extensions</code> (or <code>brave://extensions</code>), choose <b>Details</b>, and check <b>Site access</b>. You can change it to "on click" or "on specific sites" for many extensions.</li>
+<li><b>Read the manifest.</b> Turn on Developer mode, note the extension's ID, and open <code>manifest.json</code> from your profile's Extensions folder. On Windows, Chrome keeps it under <code>%LocalAppData%\Google\Chrome\User Data\Default\Extensions\&lt;id&gt;\&lt;version&gt;\</code> and Brave under <code>%LocalAppData%\BraveSoftware\Brave-Browser\User Data\Default\Extensions\</code>. Look at <code>permissions</code>, <code>optional_permissions</code> and <code>host_permissions</code>.</li>
+<li><b>Match each ask to a feature you use.</b> If you cannot find the feature that needs a permission, ask the developer, or pick another extension.</li>
+<li><b>Read the privacy policy for specifics.</b> Good ones say what is stored, where, and when anything is sent. "We take privacy seriously" says nothing.</li>
+<li><b>Check the date and the source.</b> When was it last updated? Is the code public? Is the developer reachable?</li>
+</ol>
+<h3>Green flags and red flags</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Green flags</th><th>Red flags</th></tr></thead>
+<tbody>
+<tr><td>Permissions are asked for when you use the feature</td><td>All-sites access required for something that does not need it</td></tr>
+<tr><td>Public source code and a licence</td><td>No privacy policy, or one that says nothing specific</td></tr>
+<tr><td>A privacy policy that names what is stored and sent</td><td>Needs an account for a feature that could work offline</td></tr>
+<tr><td>Recent updates and a way to contact the developer</td><td>Long gaps in updates, or an unclear owner</td></tr>
+<tr><td>Works with optional access switched off</td><td>Requests keep growing with each version</td></tr>
+</tbody></table></div>
+
+<h2 id="limits">Limits, and how to correct us</h2>
+<ul>
+<li><b>Seven is a small sample.</b> It is not a representative cross-section of all extensions. The most popular extensions in the store are mostly closed source, and we have not included them.</li>
+<li><b>A manifest shows capability, not behaviour.</b> It says what an extension <i>can</i> do. It does not prove what it does. Reading the code, or the privacy policy, is the next step.</li>
+<li><b>Repository manifests may differ from store builds.</b> Packaging tools can change or add keys, and the store version may be older or newer than the default branch.</li>
+<li><b>A count treats all permissions as equal.</b> <code>storage</code> and <code>history</code> do not carry the same weight, which is why we separate required from optional and highlight all-sites access instead of ranking by count.</li>
+<li><b>Snapshots go stale.</b> Stars, versions and permissions all change. Every figure here is dated 2026-10-22.</li>
+</ul>
+<p>If we got something wrong about your extension, or you would like it added to the dataset, email <a href="mailto:info.adnanak@gmail.com">info.adnanak@gmail.com</a> or open an issue on <a href="https://github.com/Adnan705/webwell/issues">GitHub</a>. We will correct the article and note the date of the change here.</p>
+
+<h2 id="use">Use this data</h2>
+<p>You are welcome to reuse the infographic, the table and the CSV, in articles, newsletters, talks or class material, as long as you link back to this page. The data is released under <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a>.</p>
+<h3>Embed the infographic</h3>
+<p>Copy this code into your page:</p>
+<textarea class="embed" id="embed-code" readonly rows="5" aria-label="Embed code for the infographic">&lt;a href="https://webwell.app/blog/extension-permissions-study"&gt;&lt;img src="https://webwell.app/media/permissions-matrix-2026-10.png" alt="Grid showing the permissions requested by seven open-source new tab and focus extensions" width="1302" style="max-width:100%;height:auto"&gt;&lt;/a&gt;
+&lt;p&gt;Source: &lt;a href="https://webwell.app/blog/extension-permissions-study"&gt;WebWell data study, permissions of new tab and focus extensions&lt;/a&gt;&lt;/p&gt;</textarea>
+<p><button class="btn" type="button" data-copy-target="embed-code">Copy embed code</button> <a class="btn alt" href="/media/permissions-matrix-2026-10.png" download>Download the PNG</a></p>
+<h3>Cite it</h3>
+<p>WebWell. "What Permissions Do New Tab and Focus Extensions Really Ask For?" webwell.app, 23 October 2026. https://webwell.app/blog/extension-permissions-study</p>
+
+<h2 id="faq">Questions</h2>
+<h3>Is an extension with more permissions less safe?</h3>
+<p>Not necessarily. What matters is what the permissions allow and whether the extension needs them. A long list of narrow permissions can be less risky than one broad one such as access to all websites.</p>
+<h3>What is the safest kind of new tab extension?</h3>
+<p>One that asks for the least and does only what you need. In our data, the two plain new tab pages needed only <code>storage</code> to install. If you want a timer, blocking or tracking as well, more permissions are expected, so prefer extensions that ask for broad access only when you turn a feature on.</p>
+<h3>Why do blockers need access to all websites?</h3>
+<p>To block or change a page, the browser has to let the extension act on it. Some extensions use the browser's own rule system, which does not read page content. Others run code inside pages. Both can ask for broad access, which is why the reasoning matters more than the permission name.</p>
+<h3>Can I use any of this for my own article?</h3>
+<p>Yes. Link to this page and use the CSV, the table or the infographic. The embed code above handles the attribution for you.</p>
+<h3>How often will you update it?</h3>
+<p>The dataset is dated 2026-10-22. We plan to refresh it and add more extensions, and every update will carry a new date and a list of changes.</p>
+  <aside class="cta">
+    <h2>Try WebWell</h2>
+    <p>A calmer new tab with focus sessions, music, site blocking and private screen-time stats. Free, open source, no account.</p>
+    <a class="btn" href="/install">Install in two minutes</a>
+  </aside>
+  <nav class="more" aria-label="More articles"><b>More from the blog</b><ul><li><a href="/blog/momentum-alternatives">Free Momentum Alternatives for a Calmer New Tab (2026)</a></li><li><a href="/blog/block-youtube-shorts-desktop">How to Block YouTube Shorts on Desktop (Chrome and Brave)</a></li><li><a href="/blog/track-screen-time-chrome-privately">How to Track Your Screen Time in Chrome Without Giving Away Your History</a></li><li><a href="/blog/pomodoro-timer-chrome">Pomodoro Timer in Chrome: How to Set One Up (and Make It Work)</a></li></ul></nav>
+</article></div></main>
+<footer><div class="wrap foot">
+  <div style="display:grid;gap:6px">
+    <a class="brand" href="/"><img src="/favicon.svg" alt="" width="28" height="28">WebWell</a>
+    <small>A free browser extension for Brave and Chrome. &copy; 2026 WebWell</small>
+  </div>
+  <nav class="foot-links" aria-label="Footer">
+    <a href="/">Home</a><a href="/blog">Blog</a><a href="/#faq">FAQ</a><a href="/install">Install</a><a href="https://github.com/Adnan705/webwell" rel="noopener">GitHub</a><a href="/privacy">Privacy policy</a><a href="mailto:info.adnanak@gmail.com">Contact</a>
+  </nav>
+</div></footer>
+<script src="/blog/blog.js" defer></script>
+<script src="/analytics.js" defer></script>
+</body>
+</html>

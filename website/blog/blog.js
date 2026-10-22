@@ -9,3 +9,14 @@
     apply(next); try { localStorage.setItem("ww-theme", next); } catch (e) {}
   });
 })();
+
+(function () {
+  document.querySelectorAll("[data-copy-target]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var el = document.getElementById(b.getAttribute("data-copy-target")); if (!el) return;
+      var done = function () { var t = b.textContent; b.textContent = "Copied"; setTimeout(function () { b.textContent = t; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(el.value).then(done, function () { el.select(); });
+      else { el.select(); try { document.execCommand("copy"); done(); } catch (e) {} }
+    });
+  });
+})();

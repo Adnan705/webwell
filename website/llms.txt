@@ -34,6 +34,7 @@ Key facts:
 - [How to Block YouTube Shorts on Desktop (Chrome and Brave)](https://webwell.app/blog/block-youtube-shorts-desktop): Three ways to hide or block YouTube Shorts in Chrome and Brave on your computer, from YouTube’s own setting to extensions, with what each one really does.
 - [How to Track Your Screen Time in Chrome Without Giving Away Your History](https://webwell.app/blog/track-screen-time-chrome-privately): Chrome on desktop has no built-in screen time. Here is how website time trackers work, what to check before you trust one, and how to see where your day goes without uploading it.
 - [Pomodoro Timer in Chrome: How to Set One Up (and Make It Work)](https://webwell.app/blog/pomodoro-timer-chrome): What the 25/5 rule really is, three ways to run a Pomodoro in Chrome or Brave, and why blocking distractions matters more than the timer.
+- [What Permissions Do New Tab and Focus Extensions Really Ask For? (Data Study)](https://webwell.app/blog/extension-permissions-study): A dataset and infographic from the public manifests of seven open-source extensions, plus how to audit any extension. Data: https://webwell.app/media/extension-permissions-2026-10.csv
 
 ## Optional
 

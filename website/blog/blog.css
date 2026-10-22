@@ -106,3 +106,25 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 .foot-links { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: .9375rem; color: var(--ink-2); }
 .foot-links a:hover { color: var(--ink); }
 .foot small { color: var(--ink-3); font-size: .8125rem; }
+
+/* data study */
+.stats { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); margin-top: 18px; }
+@media (min-width: 700px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+.stat { padding: 18px; border: 1px solid var(--rule); border-radius: 18px; background: var(--card); display: grid; gap: 6px; align-content: start; }
+.stat b { font-size: 2.25rem; line-height: 1; letter-spacing: -.045em; color: var(--coral); font-weight: 700; }
+.stat span { font-size: .875rem; line-height: 1.4; color: var(--ink-2); }
+.figure { background: #fff; overflow-x: auto; }
+.figure .matrix { display: block; width: 100%; min-width: 880px; height: auto; }
+.doc pre { margin: 18px 0 0; padding: 16px 18px; border: 1px solid var(--rule); border-radius: 14px; background: var(--paper-2); overflow-x: auto; font-size: .8125rem; line-height: 1.6; }
+.doc pre code { border: 0; padding: 0; background: none; white-space: pre; }
+.doc table small { color: var(--ink-3); }
+.embed { width: 100%; margin-top: 14px; padding: 14px 16px; border: 1px solid var(--rule); border-radius: 14px; background: var(--paper-2); color: var(--ink); font: 400 .8125rem/1.6 var(--f-mono); resize: vertical; }
+.btn.alt { background: var(--card); color: var(--ink); border-color: var(--rule); box-shadow: none; }
+.doc a.btn { color: #fff; text-decoration: none; }
+.doc a.btn.alt { color: var(--ink); }
+button.btn { cursor: pointer; }
+
+@media (min-width: 900px) {
+  .doc .figure { width: min(1100px, calc(100vw - 64px)); position: relative; left: 50%; transform: translateX(-50%); }
+  .figure .matrix { min-width: 0; }
+}
