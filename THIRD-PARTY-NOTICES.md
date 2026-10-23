@@ -43,3 +43,6 @@ Played through their official embedded players (open.spotify.com, w.soundcloud.c
 
 ## Radio
 Streams from [SomaFM](https://somafm.com) (listener-supported).
+
+## Fonts
+Plus Jakarta Sans and Inter, bundled in `fonts/`. Both are licensed under the [SIL Open Font License 1.1](https://openfontlicense.org).

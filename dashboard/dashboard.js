@@ -1007,6 +1007,9 @@ async function renderSettings() {
     '<div class="sub-mut" style="margin-top:10px;font-size:12px;line-height:1.6">Only your question and a short stats summary are sent to Google, and only when you ask the AI something. Everyone uses their own free key, so the AI never breaks for others.</div>' +
     '</div>' +
     '<div class="card" style="margin-top:16px"><h3>Help &amp; feedback</h3>' +
+    setRow('Welcome tour',
+      'A one-minute walk through every feature and where to find it.',
+      '<button class="btn small" id="tourBtn">Show the tour again</button>') +
     setRow('Report a bug',
       'Found something broken? Tell the developer directly — it takes 30 seconds.',
       '<button class="btn small" id="bugReportBtn">🐞 Report a bug</button>') +
@@ -1098,6 +1101,9 @@ async function renderSettings() {
     }
     inp.disabled = false;
     btn.innerHTML = 'Test &amp; save key';
+  });
+  document.getElementById('tourBtn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('newtab/newtab.html') + '#tour' });
   });
   document.getElementById('bugReportBtn').addEventListener('click', () => {
     if (!BUG_REPORT_URL) {

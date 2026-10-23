@@ -161,6 +161,19 @@ function maybeAskName() {
   });
 }
 
+// New users get the welcome tour (welcome.js), which asks for the name itself.
+// Settings → "Show the tour again" opens this page with #tour.
+function startWelcome() {
+  const W = window.WW_WELCOME;
+  if (!W || !W.start) { maybeAskName(); return; }
+  W.start({
+    name: profile.name,
+    forced: location.hash === '#tour',
+    onName: async v => { profile.name = v; await persist({ profile }); tickClock(); },
+    onEnd: () => { if (location.hash) history.replaceState(null, '', location.pathname); }
+  }).catch(() => {});
+}
+
 /* ---------------- focus ---------------- */
 let focusToday = null;   // { mins, sessions } from the Focus sessions log
 function renderFocusStat() {
@@ -578,8 +591,8 @@ function paintAll(first) {
   loadState().then(() => {
     if (stateSig() !== before) paintAll(false);
     saveBoot();
-    maybeAskName();
-  }).catch(() => { maybeAskName(); });
+    startWelcome();
+  }).catch(() => { startWelcome(); });
 
   // Today's focus time, and keep it current when a session finishes in another tab.
   store.get(['focusLog']).then(r => { focusToday = (r.focusLog || {})[today] || null; renderFocusStat(); }).catch(() => {});

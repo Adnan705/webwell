@@ -279,7 +279,8 @@ chrome.runtime.onInstalled.addListener((details) => serialized(async () => {
   chrome.alarms.create('webwell-tick', { periodInMinutes: 1 });
   registerUninstallPage();
   if (details.reason === 'install') {
-    chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
+    // Open the new tab, where the welcome tour starts (newtab/welcome.js).
+    chrome.tabs.create({ url: chrome.runtime.getURL('newtab/newtab.html') });
   }
   await resync();
   syncProtectRules();

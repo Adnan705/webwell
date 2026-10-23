@@ -39,6 +39,9 @@ const actions = {
   'focus-sheet': "var b=document.getElementById('lockBtn'); if (b) b.click();",
 };
 if (state !== 'music-playing' && state !== 'music-spotify') actions['playing-pill'] = '';
+// tour-0 … tour-5: the welcome tour (welcome.js) on that step
+const tourStep = /^tour-(\d)$/.test(state) ? +state.slice(5) : -1;
+if (tourStep >= 0) actions[state] = 'setTimeout(function(){ for (var i = 0; i < ' + tourStep + '; i++) document.getElementById("wlNext").click(); }, 400);';
 const after = (actions[state] || '') + (state === 'default' || state === 'tasks' || state === 'focus-sheet' || state === 'no-focus' || state === 'focus-running' || state === 'focus-done' ? "window.__ui(" + JSON.stringify(playing) + ");" : '');
 
 const stub = `<base href="file:///${ROOT.replace(/\\/g, '/')}/newtab/">
@@ -47,7 +50,7 @@ const stub = `<base href="file:///${ROOT.replace(/\\/g, '/')}/newtab/">
   var store = ${JSON.stringify(seed)}; var cbs = [];
   var copy = function (o) { return JSON.parse(JSON.stringify(o)); };
   window.chrome = {
-    runtime: { getURL: function (p) { return 'chrome-extension://x/' + p; }, getManifest: function () { return { version: '1.7.2' }; },
+    runtime: { getURL: function (p) { return 'chrome-extension://x/' + p; }, getManifest: function () { return { version: '1.8.0' }; },
       sendMessage: function (m) { return Promise.resolve(m && m.cmd === 'get-state' ? undefined : { ok: true, live: null }); },
       onMessage: { addListener: function (f) { cbs.push(f); } } },
     storage: { local: { get: function () { return Promise.resolve(copy(store)); }, set: function (o) { Object.assign(store, copy(o)); return Promise.resolve(); }, remove: function (k) { [].concat(k).forEach(function (x) { delete store[x]; }); return Promise.resolve(); } }, onChanged: { addListener: function () {} } },
@@ -55,6 +58,7 @@ const stub = `<base href="file:///${ROOT.replace(/\\/g, '/')}/newtab/">
     permissions: { contains: function () { return Promise.resolve(true); }, request: function () { return Promise.resolve(true); } },
     tabs: { create: function () {}, update: function () {} }, search: { query: function () {} }, alarms: {}, idle: {}
   };
+  if (${tourStep} >= 0) history.replaceState(null, '', location.href.split('#')[0] + '#tour');
   window.__ui = function (ui) { cbs.forEach(function (f) { try { f({ target: 'ww-player-ui', ui: ui }); } catch (e) {} }); };
   try { localStorage.setItem('ww_boot', JSON.stringify({ v: 1, theme: 'dusk', bgMode: store.profile.bgMode, vecStyle: store.profile.vecStyle, vecPal: store.profile.vecPal, name: 'Adnan', bgPick: store.profile.bgPick, focus: store.focus || null, tasksDate: '${key}', tasks: (store.tasks && store.tasks['${key}']) || [], bookmarks: store.ntBookmarks, hidden: [], auto: [] })); } catch (e) {}
   window.addEventListener('load', function () { setTimeout(function () { try { ${after} } catch (e) { document.title = 'ACTION ERROR ' + e.message; } }, 600); });
