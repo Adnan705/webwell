@@ -10,7 +10,11 @@
 </p>
 
 <p align="center">
+  <a href="https://chromewebstore.google.com/detail/webwell/mnjakeggjhfdookcdgjdgmamhcobnofi"><b>Add to Chrome, it's free</b></a>
+  &nbsp;·&nbsp;
   <a href="https://webwell.app"><b>webwell.app</b></a>
+  &nbsp;·&nbsp;
+  <a href="https://webwell.app/blog">Blog</a>
 </p>
 
 <p align="center">
@@ -50,7 +54,7 @@
 - 🖼️ **Momentum-style new tab** — landmark photos with facts, a daily focus you can start a session from, tasks, greeting, web search
 - 🎧 **Music on your new tab** — a compact player with lofi radio, offline rain/noise/wave sounds, Spotify and SoundCloud; tap the ♥ to save a song and it's one click away on every new tab
 - ⏳ **Focus sessions** — a full-screen focus timer with offline rain/noise/wave sounds or lofi radio; distracting sites are blocked until you're done
-- 🛡️ **Protect** — adult-content filter (47,000+ sites, SafeSearch, YouTube Restricted Mode), short-video blocker (Shorts, Reels, TikTok), always-blocked sites, mindful pause, parent PIN
+- 🛡️ **Protect** — adult-content filter (95,000+ domains, SafeSearch, YouTube Restricted Mode), short-video blocker (Shorts, Reels, TikTok), always-blocked sites, mindful pause, parent PIN
 - 🎯 **Site limits & nudges** — daily limits per site, gentle check-ins
 - 🧾 **Shareable week cards** — download a beautiful image of your week for social media
 - 👤 **Local profile** — your name, picture, and themes; your data stays yours
