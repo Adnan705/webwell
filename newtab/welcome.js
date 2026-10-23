@@ -12,22 +12,68 @@
 
   const STEPS = [
     { id: 'name' },
-    { id: 'focus', eyebrow: 'Focus sessions', title: 'One focus. <em>One</em> tap.', img: 'img/tour/focus.webp',
+    { id: 'focus', eyebrow: 'Focus sessions', title: 'One focus. <em>One</em> tap.', scene: 'focus',
       text: 'Write what matters today, then press <b>Start focusing</b>. A full-screen timer keeps you on it for 25, 50 or 90 minutes.',
       where: 'On every new tab: type your focus in the middle, or tap <b>Focus</b> at the top right.' },
-    { id: 'music', eyebrow: 'Music', title: 'Rain, radio or <em>your</em> Spotify.', img: 'img/tour/music.webp',
+    { id: 'music', eyebrow: 'Music', title: 'Rain, radio or <em>your</em> Spotify.', scene: 'music',
       text: 'Calm sounds, lofi radio, Spotify and SoundCloud play from your new tab and keep going when you switch tabs.',
       where: 'Open the player at the <b>top left</b> of any new tab. Tap the heart to keep a song one click away.' },
-    { id: 'protect', eyebrow: 'Blocking', title: 'Distractions <em>wait</em> until you’re done.', img: 'img/tour/protect.webp',
+    { id: 'protect', eyebrow: 'Blocking', title: 'Distractions <em>wait</em> until you’re done.', scene: 'protect',
       text: 'During a focus session, sites you mark as distracting are blocked. You can also add a mindful pause, a short-video blocker and an adult-content filter.',
       where: 'Dashboard → <b>Protect</b>. Everything there stays off until you switch it on.' },
-    { id: 'stats', eyebrow: 'Private screen time', title: 'Your day, in <em>honest</em> numbers.', img: 'img/tour/stats.webp',
+    { id: 'stats', eyebrow: 'Private screen time', title: 'Your day, in <em>honest</em> numbers.', scene: 'stats',
       text: 'See your daily score, the sites that took your time and your 24-hour rhythm. It is stored only in this browser: no account, no server.',
       where: 'Tap the <b>chart icon</b> at the top right of your new tab, or the WebWell icon in your toolbar.' },
     { id: 'yours' }
   ];
 
-  const api = { shouldShow, STEPS };
+  // Animated feature scenes: a small UI drawn in HTML on a 480x300 stage, with a cursor that
+  // moves, clicks and changes it (see the .sc-* keyframes in newtab.css). Loops every 6 s.
+  const CURSOR = '<span class="sc-cur"><i class="sc-ring"></i><svg viewBox="0 0 24 24" width="22" height="22"><path d="M5 2.5l13.5 12.2-6 .6 3.6 6.6-2.7 1.4-3.6-6.7-4.8 4z" fill="#fff" stroke="#1d1d1f" stroke-width="1.4" stroke-linejoin="round"/></svg></span>';
+  const HEART = (cls) => '<svg class="' + cls + '" viewBox="0 0 24 24" width="15" height="15"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>';
+  const SCENES = {
+    focus: { bg: ['mountains', 'dawn'], html:
+      '<div class="sc-nt"><p class="sc-q">What’s your main focus today?</p><p class="sc-f">Finish the landing page copy</p></div>' +
+      '<span class="sc-ntbtn">Start focusing</span>' +
+      '<div class="sc-card sc-fcard"><p class="sc-cap">Focusing</p><p class="sc-mut">Finish the landing page copy</p>' +
+        '<p class="sc-time">24<b>:</b>59</p><div class="sc-track"><i></i></div>' +
+        '<div class="sc-chips"><span class="on">Rain</span><span>Waves</span><span>Lofi radio</span></div></div>' },
+    music: { bg: ['waves', 'ocean'], html:
+      '<div class="sc-card sc-mcard">' +
+        '<img class="sc-art" src="img/lofi-girl.webp" alt="">' +
+        '<p class="sc-mt">Deep Focus</p><p class="sc-ms">Lofi radio</p><span class="sc-eq"><b></b><b></b><b></b></span>' +
+        '<div class="sc-mtrack"><i></i></div>' +
+        '<span class="sc-play"><svg class="pl" viewBox="0 0 24 24" width="14" height="14"><path d="M8 5l11 7-11 7z" fill="#fff"/></svg><svg class="pa" viewBox="0 0 24 24" width="14" height="14"><rect x="6" y="5" width="4" height="14" rx="1" fill="#fff"/><rect x="14" y="5" width="4" height="14" rx="1" fill="#fff"/></svg></span>' +
+        '<div class="sc-list">' +
+          [['Rain', 'Steady rainfall', 'lofi-night'], ['Waves', 'Slow ocean swell', 'lofi-disc'], ['Sweater Weather', 'Your Spotify', 'lofi-sakura']].map((r, i) =>
+            '<div class="sc-li"><img src="img/' + r[2] + '.webp" alt=""><span><b>' + r[0] + '</b><em>' + r[1] + '</em></span>' +
+            HEART('h-o') + (i === 2 ? HEART('h-f') : '') + '</div>').join('') +
+        '</div></div>' },
+    protect: { bg: ['hills', 'sakura'], html:
+      '<div class="sc-card sc-tcard">' +
+        [['Mindful pause', 'on'], ['Short-video blocker', 'flip'], ['Adult-content filter', '']].map(r =>
+          '<div class="sc-tr"><span>' + r[0] + '</span><i class="sc-tg ' + r[1] + '"></i></div>').join('') +
+      '</div>' +
+      '<div class="sc-card sc-bcard"><span class="sc-shield"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ef6a52" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z"/><path d="M9.5 12l2 2 3.5-4"/></svg></span>' +
+        '<p class="sc-bt">youtube.com can wait.</p><p class="sc-mut">Blocked until your focus session ends.</p>' +
+        '<div class="sc-bb"><span class="c">Back to focus</span><span>Unblock</span></div></div>' },
+    stats: { bg: ['contours', 'forest'], html:
+      '<div class="sc-card sc-scard">' +
+        '<svg class="sc-ringc" viewBox="0 0 80 80" width="80" height="80"><circle cx="40" cy="40" r="32" fill="none" stroke="#eeeef1" stroke-width="9"/><circle class="arc" cx="40" cy="40" r="32" fill="none" stroke="#34c759" stroke-width="9" stroke-linecap="round" transform="rotate(-90 40 40)"/></svg>' +
+        '<p class="sc-score">82<em>SCORE</em></p>' +
+        '<p class="sc-cap sc-today">Today</p><p class="sc-big">5h 12m focused</p><p class="sc-mut sc-up">Up 40 minutes on yesterday</p>' +
+        [['github.com', '2h 10m', 100, '#1d1d1f'], ['docs.google.com', '1h 05m', 50, '#5b8def'], ['figma.com', '48m', 37, '#a259ff'], ['youtube.com', '24m', 18, '#ef6a52']].map((r, i) =>
+          '<div class="sc-bar sr' + i + '"><span>' + r[0] + '</span><em>' + r[1] + '</em><div><i style="--w:' + r[2] + '%;background:' + r[3] + '"></i></div></div>').join('') +
+      '</div>' }
+  };
+  function sceneHtml(id) {
+    const s = SCENES[id];
+    const V = typeof window !== 'undefined' && window.WW_VBG;
+    const bg = V && V.dataUri ? 'background-image:url(&quot;' + V.dataUri(s.bg[0], s.bg[1]) + '&quot;)' : '';
+    return '<div class="wl-scene sc-' + id + '" style="' + bg + '"><div class="sc-stage">' + s.html + CURSOR + '</div></div>';
+  }
+
+  const api = { shouldShow, STEPS, SCENES, sceneHtml };
   if (typeof window === 'undefined') { module.exports = api; return; }
   window.WW_WELCOME = api;
 
@@ -74,7 +120,7 @@
         '<p class="wl-text">' + s.text + '</p>' +
         '<p class="wl-where"><span class="wl-tag">Where</span><span>' + s.where + '</span></p>' +
       '</div>' +
-      '<div class="wl-shot"><img src="' + s.img + '" alt=""></div>' +
+      '<div class="wl-shot" aria-hidden="true">' + sceneHtml(s.scene) + '</div>' +
     '</div>';
   }
 
@@ -86,11 +132,21 @@
     root.querySelector('#wlNext').textContent = last ? 'Start using WebWell' : step === 0 ? 'Continue' : 'Next';
     root.querySelector('#wlSkip').classList.toggle('invisible', last);
     root.querySelector('.wl-card').setAttribute('data-step', STEPS[step].id);
+    fitScene();
     const input = root.querySelector('#wlName');
     if (input) {
       input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); next(); } });
       setTimeout(() => input.focus(), 30);
     }
+  }
+
+  // The scene is drawn at 480x300 and scaled to whatever width the layout gives it.
+  function fitScene() {
+    if (!root) return;
+    const sc = root.querySelector('.wl-scene');
+    if (!sc) return;
+    const w = sc.clientWidth;
+    if (w) sc.querySelector('.sc-stage').style.transform = 'scale(' + (w / 480) + ')';
   }
 
   async function saveName() {
@@ -121,6 +177,7 @@
     root.classList.add('leaving');
     setTimeout(() => { root.remove(); root = null; }, 260);
     document.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('resize', fitScene);
     if (opts.onEnd) opts.onEnd();
   }
 
@@ -156,6 +213,7 @@
     root.querySelector('#wlBack').addEventListener('click', back);
     root.querySelector('#wlNext').addEventListener('click', next);
     document.addEventListener('keydown', onKey, true);
+    window.addEventListener('resize', fitScene);
   }
 
   // opts: { name, forced, onName(v) -> Promise, onEnd() }. Resolves true if the tour was shown.

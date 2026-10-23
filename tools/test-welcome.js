@@ -33,8 +33,23 @@ async function boot({ state, name = '', forced = false, locked = false } = {}) {
   await ok('rule: never again after finishing or skipping', () => assert.strictEqual(W.shouldShow({ done: true }, false, false), false));
   await ok('rule: "Show the tour again" always shows it', () => assert.strictEqual(W.shouldShow({ done: true }, true, true), true));
   await ok('it covers the name, every main feature and a closing step', () => assert.deepStrictEqual(W.STEPS.map(s => s.id), ['name', 'focus', 'music', 'protect', 'stats', 'yours']));
-  await ok('every feature step says where to find it, and its image ships with the extension', () => {
-    for (const s of W.STEPS.filter(s => s.img)) { assert(s.where && s.where.length > 20, s.id + ' has no "where"'); assert(fs.existsSync(path.join(ROOT, 'newtab', s.img)), s.img + ' missing'); }
+  await ok('every feature step says where to find it and has an animated scene', () => {
+    const feats = W.STEPS.filter(s => s.scene);
+    assert.strictEqual(feats.length, 4);
+    for (const s of feats) { assert(s.where && s.where.length > 20, s.id + ' has no "where"'); assert(W.SCENES[s.scene], s.scene + ' scene missing'); }
+  });
+  await ok('each scene has a clicking cursor and only uses images bundled with the extension', () => {
+    for (const id of Object.keys(W.SCENES)) {
+      const h = W.sceneHtml(id);
+      assert(h.includes('sc-cur') && h.includes('sc-ring'), id + ' has no cursor');
+      for (const m of h.matchAll(/src="([^"]+)"/g)) { assert(!/^https?:/.test(m[1]), id + ' loads a remote image'); assert(fs.existsSync(path.join(ROOT, 'newtab', m[1])), m[1] + ' missing'); }
+    }
+  });
+  await ok('every scene animation in the CSS exists, and motion can be turned off', () => {
+    const css = fs.readFileSync(path.join(ROOT, 'newtab/newtab.css'), 'utf8');
+    const used = new Set([...css.matchAll(/animation(?:-name)?:\s*(sc[A-Za-z]+-?[A-Za-z0-9]*)/g)].map(m => m[1]));
+    for (const n of used) assert(css.includes('@keyframes ' + n + ' '), 'missing @keyframes ' + n);
+    assert(/prefers-reduced-motion[\s\S]{0,120}\.sc-stage/.test(css));
   });
 
   let t = await boot();

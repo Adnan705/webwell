@@ -632,7 +632,6 @@ body.locked .review { display: none; }
 .wl-where { margin-top: 20px; display: flex; gap: 10px; align-items: baseline; padding: 12px 14px; border-radius: 10px; background: #f5f5f7; font-size: 13.5px; line-height: 1.55; color: #6e6e73; }
 .wl-where .wl-tag { flex: none; font-size: 11px; font-weight: 600; color: #ef6a52; text-transform: uppercase; letter-spacing: .06em; }
 .wl-shot { border-radius: 10px; overflow: hidden; aspect-ratio: 16 / 10; background: #f5f5f7; box-shadow: 0 0 0 .5px rgba(0,0,0,.14), 0 12px 32px rgba(0,0,0,.14); }
-.wl-shot img { width: 100%; height: 100%; object-fit: cover; object-position: left top; display: block; }
 
 .wl-tiles { display: flex; justify-content: center; gap: 10px; margin: 22px 0 4px; }
 .wl-tile { width: 112px; height: 70px; border-radius: 10px; background-size: cover; background-position: center; box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 6px 16px rgba(0,0,0,.12); }
@@ -662,3 +661,117 @@ body.locked .review { display: none; }
 }
 @media (max-height: 640px) { .wl-logo { width: 52px; height: 52px; margin-bottom: 10px; } .wl-tips { display: none; } }
 @media (prefers-reduced-motion: reduce) { .welcome, .wl-card, .wl-body > div { animation: none !important; } }
+/* ---------- welcome tour: animated feature scenes (480x300 stage, scaled by welcome.js) ---------- */
+.wl-scene { position: relative; width: 100%; height: 100%; background: linear-gradient(135deg, #2b2150, #8a4f7d); background-size: cover; background-position: center; overflow: hidden; }
+.sc-stage { position: absolute; left: 0; top: 0; width: 480px; height: 300px; transform-origin: 0 0; color: #1d1d1f; }
+.sc-stage * { animation-duration: 6s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+.sc-card { position: absolute; background: rgba(255,255,255,.95); border-radius: 14px; box-shadow: 0 0 0 .5px rgba(0,0,0,.08), 0 18px 44px rgba(10,8,30,.42); }
+.sc-cap { font-size: 9.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #ef6a52; }
+.sc-mut { font-size: 11px; color: #6e6e73; }
+.sc-cur { position: absolute; left: -5px; top: -2px; z-index: 5; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.sc-cur svg { display: block; position: relative; }
+.sc-ring { position: absolute; left: -9px; top: -12px; width: 28px; height: 28px; border-radius: 50%; background: rgba(239,106,82,.35); border: 2px solid rgba(255,255,255,.95); opacity: 0; }
+
+/* focus: type a focus, click Start focusing, the timer takes over */
+.sc-nt { position: absolute; left: 0; right: 0; top: 70px; text-align: center; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,.35); animation-name: scF-nt; }
+.sc-q { font-size: 13px; opacity: .9; }
+.sc-f { display: inline-block; margin-top: 10px; padding: 0 8px 5px; font-size: 19px; font-weight: 300; border-bottom: 1px solid rgba(255,255,255,.6); }
+.sc-ntbtn { position: absolute; left: 50%; top: 172px; height: 30px; line-height: 30px; padding: 0 16px; border-radius: 999px; background: #fff; color: #1d1d1f; font-size: 12.5px; font-weight: 700; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.25); transform: translateX(-50%); animation-name: scF-btn; }
+.sc-fcard { left: 105px; top: 46px; width: 270px; padding: 18px 18px 16px; text-align: center; opacity: 0; animation-name: scF-card; }
+.sc-time { margin: 4px 0 10px; font-size: 54px; font-weight: 300; letter-spacing: -.04em; line-height: 1; }
+.sc-time b { font-weight: 300; animation: scBlink 1s steps(1) infinite !important; }
+.sc-track { height: 4px; border-radius: 999px; background: #eeeef1; overflow: hidden; }
+.sc-track i { display: block; height: 100%; width: 3%; border-radius: 999px; background: #ef6a52; animation-name: scF-bar; }
+.sc-chips { display: flex; justify-content: center; gap: 5px; margin-top: 12px; }
+.sc-chips span { height: 22px; line-height: 22px; padding: 0 10px; border-radius: 999px; background: #f2f2f5; font-size: 10.5px; font-weight: 600; color: #3a3a3c; }
+.sc-chips span.on { background: #1d1d1f; color: #fff; }
+.sc-focus .sc-cur { animation-name: scF-cur; }
+.sc-focus .sc-ring, .sc-protect .sc-ring { animation-name: scRing1; }
+@keyframes scF-nt { 0%, 40% { opacity: 1; } 46%, 94% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes scF-btn { 0%, 33% { opacity: 1; transform: translateX(-50%) scale(1); } 36% { transform: translateX(-50%) scale(.9); } 40% { opacity: 1; transform: translateX(-50%) scale(1); } 46%, 94% { opacity: 0; transform: translateX(-50%) scale(1); } 100% { opacity: 1; } }
+@keyframes scF-card { 0%, 42% { opacity: 0; transform: scale(.94); } 50%, 90% { opacity: 1; transform: scale(1); } 97%, 100% { opacity: 0; transform: scale(.97); } }
+@keyframes scF-bar { 0%, 48% { width: 3%; } 92%, 100% { width: 62%; } }
+@keyframes scF-cur { 0% { transform: translate(420px, 285px); opacity: 0; } 8% { transform: translate(405px, 272px); opacity: 1; } 30%, 40% { transform: translate(252px, 190px); opacity: 1; } 52%, 100% { transform: translate(330px, 250px); opacity: 0; } }
+@keyframes scRing1 { 0%, 33% { opacity: 0; transform: scale(.3); } 35% { opacity: 1; transform: scale(.5); } 46%, 100% { opacity: 0; transform: scale(1.9); } }
+@keyframes scBlink { 50% { opacity: .25; } }
+
+/* music: press play, then save a song */
+.sc-mcard { left: 75px; top: 30px; width: 330px; height: 240px; }
+.sc-art { position: absolute; left: 14px; top: 14px; width: 54px; height: 54px; border-radius: 10px; object-fit: cover; box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+.sc-mt { position: absolute; left: 80px; top: 17px; font-size: 14.5px; font-weight: 700; }
+.sc-ms { position: absolute; left: 80px; top: 37px; font-size: 11.5px; color: #6e6e73; }
+.sc-eq { position: absolute; left: 172px; top: 21px; display: flex; align-items: flex-end; gap: 2px; height: 12px; opacity: 0; animation-name: scM-eqv; }
+.sc-eq b { width: 3px; height: 4px; border-radius: 2px; background: #ef6a52; animation: scEq .7s ease-in-out infinite alternate !important; }
+.sc-eq b:nth-child(2) { animation-delay: .2s !important; } .sc-eq b:nth-child(3) { animation-delay: .4s !important; }
+.sc-mtrack { position: absolute; left: 80px; top: 58px; width: 180px; height: 4px; border-radius: 999px; background: #eeeef1; overflow: hidden; }
+.sc-mtrack i { display: block; height: 100%; width: 0; background: #1d1d1f; border-radius: 999px; animation-name: scM-bar; animation-timing-function: linear; }
+.sc-play { position: absolute; left: 278px; top: 20px; width: 36px; height: 36px; border-radius: 50%; background: #ef6a52; box-shadow: 0 6px 14px rgba(239,106,82,.45); }
+.sc-play svg { position: absolute; left: 11px; top: 11px; }
+.sc-play .pl { animation-name: scM-pl; } .sc-play .pa { opacity: 0; animation-name: scM-pa; }
+.sc-list { position: absolute; left: 14px; top: 84px; width: 302px; border-radius: 10px; background: #f5f5f7; overflow: hidden; }
+.sc-li { position: relative; display: flex; align-items: center; gap: 9px; height: 46px; padding: 0 12px; }
+.sc-li + .sc-li { border-top: 1px solid #e5e5ea; }
+.sc-li img { width: 30px; height: 30px; border-radius: 7px; object-fit: cover; }
+.sc-li span { flex: 1; min-width: 0; }
+.sc-li b { display: block; font-size: 12.5px; font-weight: 600; }
+.sc-li em { display: block; font-size: 10.5px; font-style: normal; color: #6e6e73; }
+.sc-li .h-o { fill: none; stroke: #a1a1a6; stroke-width: 2; }
+.sc-li .h-f { position: absolute; right: 12px; top: 15.5px; fill: #ef6a52; stroke: #ef6a52; stroke-width: 2; opacity: 0; animation-name: scM-heart; }
+.sc-music .sc-cur { animation-name: scM-cur; }
+.sc-music .sc-ring { animation-name: scRing2; }
+@keyframes scM-eqv { 0%, 34% { opacity: 0; } 38%, 96% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes scEq { from { height: 3px; } to { height: 12px; } }
+@keyframes scM-bar { 0%, 34% { width: 0; } 96% { width: 72%; } 100% { width: 0; } }
+@keyframes scM-pl { 0%, 34% { opacity: 1; } 36%, 96% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes scM-pa { 0%, 34% { opacity: 0; } 36%, 96% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes scM-heart { 0%, 71% { opacity: 0; transform: scale(.4); } 74% { opacity: 1; transform: scale(1.35); } 78%, 95% { opacity: 1; transform: scale(1); } 100% { opacity: 0; } }
+@keyframes scM-cur { 0% { transform: translate(440px, 290px); opacity: 0; } 6% { transform: translate(430px, 280px); opacity: 1; } 26%, 40% { transform: translate(374px, 72px); opacity: 1; } 62%, 82% { transform: translate(374px, 232px); opacity: 1; } 92%, 100% { transform: translate(420px, 285px); opacity: 0; } }
+@keyframes scRing2 { 0%, 32% { opacity: 0; transform: scale(.3); } 34% { opacity: 1; transform: scale(.5); } 44% { opacity: 0; transform: scale(1.9); } 70% { opacity: 0; transform: scale(.3); } 72% { opacity: 1; transform: scale(.5); } 82%, 100% { opacity: 0; transform: scale(1.9); } }
+
+/* blocking: switch a blocker on, then a blocked site waits */
+.sc-tcard { left: 100px; top: 26px; width: 280px; overflow: hidden; }
+.sc-tr { display: flex; align-items: center; justify-content: space-between; height: 42px; padding: 0 16px; font-size: 12.5px; font-weight: 600; }
+.sc-tr + .sc-tr { border-top: 1px solid #ececee; }
+.sc-tg { position: relative; width: 34px; height: 20px; border-radius: 999px; background: #d2d2d7; }
+.sc-tg::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.sc-tg.on { background: #34c759; } .sc-tg.on::after { left: 16px; }
+.sc-tg.flip { animation-name: scP-tg; } .sc-tg.flip::after { animation: scP-knob 6s ease-in-out infinite; }
+.sc-bcard { left: 110px; top: 128px; width: 260px; padding: 14px 16px; text-align: center; opacity: 0; animation-name: scP-b; }
+.sc-shield { display: grid; place-items: center; width: 34px; height: 34px; margin: 0 auto; border-radius: 10px; background: #fdecea; }
+.sc-bt { margin: 8px 0 2px; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+.sc-bb { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
+.sc-bb span { height: 26px; line-height: 26px; padding: 0 12px; border-radius: 999px; background: #f2f2f5; font-size: 11px; font-weight: 700; }
+.sc-bb span.c { background: #ef6a52; color: #fff; }
+.sc-protect .sc-cur { animation-name: scP-cur; }
+@keyframes scP-tg { 0%, 35% { background: #d2d2d7; } 38%, 95% { background: #34c759; } 100% { background: #d2d2d7; } }
+@keyframes scP-knob { 0%, 35% { left: 2px; } 38%, 95% { left: 16px; } 100% { left: 2px; } }
+@keyframes scP-b { 0%, 48% { opacity: 0; transform: translateY(16px); } 56%, 92% { opacity: 1; transform: none; } 98%, 100% { opacity: 0; transform: translateY(8px); } }
+@keyframes scP-cur { 0% { transform: translate(430px, 290px); opacity: 0; } 6% { transform: translate(420px, 280px); opacity: 1; } 28%, 42% { transform: translate(350px, 92px); opacity: 1; } 52%, 100% { transform: translate(420px, 40px); opacity: 0; } }
+
+/* screen time: the score fills, bars grow, a site is looked at */
+.sc-scard { left: 60px; top: 22px; width: 360px; height: 256px; }
+.sc-ringc { position: absolute; left: 18px; top: 16px; }
+.sc-ringc .arc { stroke-dasharray: 201; stroke-dashoffset: 201; animation-name: scS-arc; }
+.sc-score { position: absolute; left: 18px; top: 16px; width: 80px; height: 80px; display: grid; place-content: center; text-align: center; font-size: 22px; font-weight: 700; line-height: 1; animation-name: scS-fade; }
+.sc-score em { display: block; margin-top: 3px; font-size: 7.5px; font-style: normal; font-weight: 700; letter-spacing: .08em; color: #6e6e73; }
+.sc-today { position: absolute; left: 114px; top: 24px; }
+.sc-big { position: absolute; left: 114px; top: 40px; font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.sc-up { position: absolute; left: 114px; top: 64px; }
+.sc-bar { position: absolute; left: 12px; right: 12px; padding: 4px 6px; border-radius: 8px; }
+.sc-bar span { font-size: 11.5px; font-weight: 600; }
+.sc-bar em { position: absolute; right: 6px; top: 4px; font-size: 11px; font-style: normal; color: #6e6e73; }
+.sc-bar div { margin-top: 5px; height: 5px; border-radius: 999px; background: #eeeef1; overflow: hidden; }
+.sc-bar i { display: block; height: 100%; width: 0; border-radius: 999px; animation-name: scS-bar; }
+.sc-bar.sr0 { top: 108px; } .sc-bar.sr1 { top: 142px; animation-name: scS-hl; } .sc-bar.sr2 { top: 176px; } .sc-bar.sr3 { top: 210px; }
+.sc-bar.sr1 i { animation-delay: .12s; } .sc-bar.sr2 i { animation-delay: .24s; } .sc-bar.sr3 i { animation-delay: .36s; }
+.sc-stats .sc-cur { animation-name: scS-cur; } .sc-stats .sc-ring { display: none; }
+@keyframes scS-arc { 0%, 6% { stroke-dashoffset: 201; } 36%, 94% { stroke-dashoffset: 36; } 100% { stroke-dashoffset: 201; } }
+@keyframes scS-fade { 0%, 10% { opacity: 0; } 30%, 94% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes scS-bar { 0%, 6% { width: 0; } 36%, 94% { width: var(--w); } 100% { width: 0; } }
+@keyframes scS-hl { 0%, 58% { background: transparent; } 62%, 88% { background: #f2f2f5; } 92%, 100% { background: transparent; } }
+@keyframes scS-cur { 0%, 40% { transform: translate(430px, 290px); opacity: 0; } 46% { transform: translate(420px, 280px); opacity: 1; } 60%, 88% { transform: translate(300px, 168px); opacity: 1; } 95%, 100% { transform: translate(330px, 210px); opacity: 0; } }
+
+/* reduced motion: hold each scene on a finished frame */
+@media (prefers-reduced-motion: reduce) {
+  .sc-stage *, .sc-stage *::after { animation-play-state: paused !important; animation-delay: -3.9s !important; }
+}
