@@ -168,8 +168,10 @@ function startWelcome() {
   if (!W || !W.start) { maybeAskName(); return; }
   W.start({
     name: profile.name,
+    bg: { bgMode: profile.bgMode, vecStyle: profile.vecStyle, vecPal: profile.vecPal },
     forced: location.hash === '#tour',
     onName: async v => { profile.name = v; await persist({ profile }); tickClock(); },
+    onBackground: async b => { Object.assign(profile, b); applyBackground(); await persist({ profile }); },
     onEnd: () => { if (location.hash) history.replaceState(null, '', location.pathname); }
   }).catch(() => {});
 }

@@ -73,18 +73,46 @@
     return '<div class="wl-scene sc-' + id + '" style="' + bg + '"><div class="sc-stage">' + s.html + CURSOR + '</div></div>';
   }
 
-  const api = { shouldShow, STEPS, SCENES, sceneHtml };
+  // Background choices on the last step. Picking one applies it to the new tab behind the tour.
+  const BG_CHOICES = [
+    { id: 'photos', label: 'Landmark photos', bg: { bgMode: 'photos' } },
+    { id: 'mountains-dawn', label: 'Mountains', bg: { bgMode: 'vector', vecStyle: 'mountains', vecPal: 'dawn' } },
+    { id: 'waves-ocean', label: 'Waves', bg: { bgMode: 'vector', vecStyle: 'waves', vecPal: 'ocean' } },
+    { id: 'hills-sakura', label: 'Hills', bg: { bgMode: 'vector', vecStyle: 'hills', vecPal: 'sakura' } },
+    { id: 'orbs-midnight', label: 'Orbs', bg: { bgMode: 'vector', vecStyle: 'orbs', vecPal: 'midnight' } },
+    { id: 'gradient', label: 'Gradient', bg: { bgMode: 'gradient' } }
+  ];
+  function bgChoiceFor(cur) {
+    if (!cur) return 'photos';
+    if (cur.bgMode === 'gradient') return 'gradient';
+    if (cur.bgMode === 'vector') { const c = BG_CHOICES.find(b => b.bg.vecStyle === cur.vecStyle && b.bg.vecPal === cur.vecPal); return c ? c.id : ''; }
+    return 'photos';
+  }
+
+  const api = { shouldShow, STEPS, SCENES, sceneHtml, BG_CHOICES, bgChoiceFor };
   if (typeof window === 'undefined') { module.exports = api; return; }
   window.WW_WELCOME = api;
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let root = null, step = 0, opts = null, name = '', ended = false;
 
+  let bgCur = '';
   function tiles() {
     const V = window.WW_VBG;
-    if (!V || !V.dataUri) return '';
-    return [['mountains', 'dawn'], ['waves', 'ocean'], ['hills', 'sakura']]
-      .map(t => '<span class="wl-tile" style="background-image:url(&quot;' + V.dataUri(t[0], t[1]) + '&quot;)"></span>').join('');
+    return BG_CHOICES.map(c => {
+      let style = '';
+      if (c.bg.bgMode === 'photos') style = 'background-image:url(img/tour-photos.webp)';
+      else if (c.bg.bgMode === 'vector' && V && V.dataUri) style = 'background-image:url(&quot;' + V.dataUri(c.bg.vecStyle, c.bg.vecPal) + '&quot;)';
+      return '<button type="button" class="wl-bg' + (c.id === bgCur ? ' on' : '') + '" data-bg="' + c.id + '" aria-pressed="' + (c.id === bgCur) + '">' +
+        '<span class="wl-bg-img wl-bg-' + c.bg.bgMode + '" style="' + style + '"></span><span class="wl-bg-label">' + c.label + '</span></button>';
+    }).join('');
+  }
+  async function pickBg(id) {
+    const c = BG_CHOICES.find(b => b.id === id);
+    if (!c || !root) return;
+    bgCur = id;
+    root.querySelectorAll('.wl-bg').forEach(b => { const on = b.dataset.bg === id; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+    try { if (opts.onBackground) await opts.onBackground(Object.assign({}, c.bg)); } catch (e) {}
   }
 
   function stepHtml(i) {
@@ -104,10 +132,10 @@
       return '<div class="wl-solo">' +
         '<p class="wl-eyebrow">You’re all set</p>' +
         '<h2 class="wl-title" id="wlTitle">Make it <em>yours</em>' + hi + '.</h2>' +
-        '<p class="wl-text">Pick a landmark photo, a calm vector scene or an animated gradient. Add your favourite sites to the dock and keep a short task list for today.</p>' +
-        '<div class="wl-tiles" aria-hidden="true">' + tiles() + '</div>' +
+        '<p class="wl-text">Pick a background for your new tab. It changes right away, and you can switch any time.</p>' +
+        '<div class="wl-tiles" role="group" aria-label="Background">' + tiles() + '</div>' +
         '<ul class="wl-tips">' +
-          '<li><b>Backgrounds, clock and theme:</b> the settings icon at the top right of your new tab.</li>' +
+          '<li><b>More backgrounds, clock and theme:</b> the settings icon at the top right of your new tab.</li>' +
           '<li><b>Tasks:</b> the Tasks button at the bottom left.</li>' +
           '<li><b>Pin WebWell:</b> click the puzzle piece in your browser toolbar, then the pin next to WebWell.</li>' +
         '</ul>' +
@@ -133,6 +161,7 @@
     root.querySelector('#wlSkip').classList.toggle('invisible', last);
     root.querySelector('.wl-card').setAttribute('data-step', STEPS[step].id);
     fitScene();
+    root.querySelectorAll('.wl-bg').forEach(b => b.addEventListener('click', () => pickBg(b.dataset.bg)));
     const input = root.querySelector('#wlName');
     if (input) {
       input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); next(); } });
@@ -216,7 +245,7 @@
     window.addEventListener('resize', fitScene);
   }
 
-  // opts: { name, forced, onName(v) -> Promise, onEnd() }. Resolves true if the tour was shown.
+  // opts: { name, bg: { bgMode, vecStyle, vecPal }, forced, onName(v) -> Promise, onBackground(bg) -> Promise, onEnd() }. Resolves true if the tour was shown.
   api.start = async function (o) {
     opts = o || {};
     if (root) return true;
@@ -225,7 +254,7 @@
     const forced = !!opts.forced;
     if (!shouldShow(state, !!opts.name, forced)) return false;
     if (!forced && document.body.classList.contains('locked')) return false;
-    name = opts.name || ''; step = 0; ended = false;
+    name = opts.name || ''; step = 0; ended = false; bgCur = bgChoiceFor(opts.bg);
     build(); render();
     return true;
   };

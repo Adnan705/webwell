@@ -15,16 +15,16 @@ const tick = ms => new Promise(r => setTimeout(r, ms || 40));
 
 const W = (() => { const m = { exports: {} }; new Function('module', 'window', SRC.replace("typeof window === 'undefined'", 'true'))(m, undefined); return m.exports; })();
 
-async function boot({ state, name = '', forced = false, locked = false } = {}) {
+async function boot({ state, name = '', forced = false, locked = false, bg } = {}) {
   const dom = new JSDOM('<!doctype html><body class="' + (locked ? 'locked' : '') + '"></body>', { runScripts: 'outside-only', url: 'chrome-extension://x/newtab/newtab.html', pretendToBeVisual: true });
-  const w = dom.window; const store = { ntWelcome: state }; const names = []; let ended = 0;
+  const w = dom.window; const store = { ntWelcome: state }; const names = [], bgs = []; let ended = 0;
   w.chrome = { storage: { local: { get: async () => JSON.parse(JSON.stringify(store)), set: async o => { Object.assign(store, JSON.parse(JSON.stringify(o))); } } } };
   w.eval(SRC);
-  const shown = await w.WW_WELCOME.start({ name, forced, onName: async v => { names.push(v); }, onEnd: () => { ended++; } });
+  const shown = await w.WW_WELCOME.start({ name, bg, forced, onName: async v => { names.push(v); }, onBackground: async b => { bgs.push(b); }, onEnd: () => { ended++; } });
   const q = s => w.document.querySelector(s);
   const click = s => q(s).dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
   const key = k => w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: k, bubbles: true }));
-  return { w, store, names, shown, q, click, key, ended: () => ended, step: () => q('.wl-card') && q('.wl-card').getAttribute('data-step') };
+  return { w, store, names, bgs, shown, q, click, key, ended: () => ended, step: () => q('.wl-card') && q('.wl-card').getAttribute('data-step') };
 }
 
 (async () => {
@@ -63,6 +63,20 @@ async function boot({ state, name = '', forced = false, locked = false } = {}) {
   t.key('ArrowRight'); await tick(); t.key('ArrowRight'); await tick(); t.key('ArrowRight'); await tick(); t.key('ArrowRight'); await tick();
   await ok('arrow keys move through the steps to the last one', () => { assert.strictEqual(t.step(), 'yours'); assert.match(t.q('#wlNext').textContent, /Start using WebWell/); assert(t.q('.wl-title').textContent.includes('Sam')); });
   await ok('the last step hides "Skip tour"', () => assert(t.q('#wlSkip').classList.contains('invisible')));
+  await ok('the last step offers six backgrounds, with the current one (photos) selected', () => {
+    const tiles = [...t.w.document.querySelectorAll('.wl-bg')];
+    assert.strictEqual(tiles.length, 6);
+    assert.deepStrictEqual(tiles.filter(b => b.classList.contains('on')).map(b => b.dataset.bg), ['photos']);
+  });
+  t.click('.wl-bg[data-bg="waves-ocean"]'); await tick();
+  await ok('picking a background applies it right away and moves the selection', () => {
+    assert.strictEqual(JSON.stringify(t.bgs), JSON.stringify([{ bgMode: 'vector', vecStyle: 'waves', vecPal: 'ocean' }]));
+    assert.strictEqual(t.q('.wl-bg.on').dataset.bg, 'waves-ocean');
+    assert.strictEqual(t.q('.wl-bg[data-bg="waves-ocean"]').getAttribute('aria-pressed'), 'true');
+  });
+  t.click('.wl-bg[data-bg="gradient"]'); await tick();
+  await ok('the gradient choice switches the background mode', () => assert.strictEqual(JSON.stringify(t.bgs[1]), JSON.stringify({ bgMode: 'gradient' })));
+  await ok('the photo tile thumbnail ships with the extension', () => assert(fs.existsSync(path.join(ROOT, 'newtab/img/tour-photos.webp'))));
   t.click('#wlNext'); await tick(320);
   await ok('finishing remembers it, closes the tour and reports back', () => { assert.strictEqual(t.store.ntWelcome.done, true); assert.strictEqual(t.store.ntWelcome.skipped, false); assert(!t.q('#welcome')); assert.strictEqual(t.ended(), 1); });
 
@@ -82,6 +96,13 @@ async function boot({ state, name = '', forced = false, locked = false } = {}) {
   await ok('never interrupts a running focus session', () => assert.strictEqual(t.shown, false));
   t = await boot({ state: { done: true }, name: 'Sam', forced: true });
   await ok('"Show the tour again" replays it with the saved name', () => { assert(t.shown); assert.strictEqual(t.q('#wlName').value, 'Sam'); });
+  await ok('the saved background is pre-selected; a custom vector scene selects nothing', () => {
+    assert.strictEqual(W.bgChoiceFor({ bgMode: 'vector', vecStyle: 'hills', vecPal: 'sakura' }), 'hills-sakura');
+    assert.strictEqual(W.bgChoiceFor({ bgMode: 'gradient' }), 'gradient');
+    assert.strictEqual(W.bgChoiceFor({ bgMode: 'vector', vecStyle: 'dots', vecPal: 'ember' }), '');
+    assert.strictEqual(W.bgChoiceFor(null), 'photos');
+  });
+  await ok('the new tab applies and saves a picked background', () => assert(/onBackground: async b => \{ Object\.assign\(profile, b\); applyBackground\(\); await persist\(\{ profile \}\); \}/.test(NT)));
 
   await ok('the page loads the tour before newtab.js', () => assert(HTML.indexOf('welcome.js') > 0 && HTML.indexOf('welcome.js') < HTML.indexOf('newtab.js')));
   await ok('the new tab starts the tour instead of the old name prompt', () => { assert(/startWelcome\(\)/.test(NT)); assert(/forced: location\.hash === '#tour'/.test(NT)); });
