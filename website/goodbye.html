@@ -25,6 +25,7 @@ textarea, input[type="email"] { font: 400 1rem/1.5 var(--f-sans); padding: 12px 
 textarea { min-height: 110px; resize: vertical; }
 button.btn { cursor: pointer; width: max-content; }
 .fine { font-size: .875rem; color: var(--ink-3); }
+.fine a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 .done { display: none; margin-top: 32px; padding: 24px; border: 1px solid var(--rule); border-radius: 20px; background: var(--card); }
 .done.show { display: block; }
 .done h2 { margin: 0 0 8px; font-size: 1.375rem; }
@@ -64,7 +65,7 @@ button.btn { cursor: pointer; width: max-content; }
     <label class="field">Your email <small>Optional. Only if you'd like a reply. Leave it empty to stay anonymous.</small>
       <input type="email" name="email" autocomplete="email"></label>
     <button class="btn" type="submit">Send feedback</button>
-    <p class="fine">Nothing else is sent: no browsing data, no statistics, no identifiers. Answers are read by one person.</p>
+    <p class="fine">Nothing from WebWell is sent: no browsing data, no statistics, no identifiers. Your answer goes through <a class="link" href="https://formspree.io/legal/privacy-policy/" rel="noopener">Formspree</a>, a form service, to one person's inbox.</p>
   </form>
 
   <div class="done" id="done" role="status">
@@ -79,14 +80,14 @@ button.btn { cursor: pointer; width: max-content; }
 </div></footer>
 <script src="/blog/blog.js" defer></script>
 <script>
-  // Set this to a form service endpoint (for example https://formspree.io/f/xxxxxxx).
-  // While it is empty, the form opens an email to the maker instead.
-  var FEEDBACK_ENDPOINT = '';
+  // Answers are delivered by Formspree (a form service) to the maker's inbox.
+  // If it can't be reached, the form falls back to opening an email to the maker.
+  var FEEDBACK_ENDPOINT = 'https://formspree.io/f/mrppgneb';
   var EMAIL = 'info.adnanak@gmail.com';
   document.getElementById('f').addEventListener('submit', function (e) {
     e.preventDefault();
     var f = e.target, reasons = [].map.call(f.querySelectorAll('input[name=reason]:checked'), function (i) { return i.value; });
-    var data = { reasons: reasons.join('; '), comment: f.comment.value.trim(), email: f.email.value.trim() };
+    var data = { _subject: 'WebWell uninstall feedback', reasons: reasons.join('; '), comment: f.comment.value.trim(), email: f.email.value.trim() };
     function finish() { f.style.display = 'none'; document.getElementById('done').classList.add('show'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     if (FEEDBACK_ENDPOINT) {
       fetch(FEEDBACK_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(data) })
