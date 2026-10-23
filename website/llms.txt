@@ -31,6 +31,7 @@ Key facts:
 
 ## Blog
 
+- [Is Momentum Plus Worth $39.95? Free Alternative](https://webwell.app/blog/is-momentum-plus-worth-it): Momentum Plus costs $39.95 a year. See what it adds, who it is worth it for, and a free alternative that covers the focus features.
 - [Free Momentum Alternatives for a Calmer New Tab (2026)](https://webwell.app/blog/momentum-alternatives): An honest look at free new-tab extensions like Bonjourr, Tabliss, start.me and WebWell: what each does well, and how to pick one that respects your privacy.
 - [How to Block YouTube Shorts on Desktop (Chrome and Brave)](https://webwell.app/blog/block-youtube-shorts-desktop): Three ways to hide or block YouTube Shorts in Chrome and Brave on your computer, from YouTube’s own setting to extensions, with what each one really does.
 - [Track Screen Time on Chrome (Free & Private)](https://webwell.app/blog/track-screen-time-chrome-privately): Chrome has no built-in screen time on desktop. Track time per website for free with a private extension: no account, data stays on your device.
