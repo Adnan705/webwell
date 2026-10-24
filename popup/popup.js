@@ -368,7 +368,7 @@ function renderSettings() {
     '<section class="card"><div class="links"><button id="lOpen">Open dashboard<span>' + ICON.chev + '</span></button>' +
     '<button id="lSet">All settings<span>' + ICON.chev + '</span></button>' +
     '<button id="lNew">Open a new tab<span>' + ICON.chev + '</span></button></div></section>' +
-    '<div class="foot">WebWell v' + esc(chrome.runtime.getManifest().version) + ' · Written &amp; Developed by Adnan</div>';
+    '<div class="foot">WebWell v' + esc(chrome.runtime.getManifest().version) + ' · Written &amp; Developed by <a href="https://adnankhan.cc" target="_blank" rel="noopener">Adnan</a></div>';
 
   const saveSettings = async patch => { S.settings = Object.assign({}, S.settings, patch); await storeSet({ settings: S.settings }); };
   $('sTrack').addEventListener('change', async e => { await saveSettings({ trackingEnabled: e.target.checked }); renderHeader(); toast(e.target.checked ? 'Tracking resumed' : 'Tracking paused'); });

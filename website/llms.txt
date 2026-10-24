@@ -8,7 +8,7 @@ Key facts:
 - Price: free. There is no paid plan, trial or account.
 - Privacy: browsing statistics are stored only in the browser's local storage on the user's device. Nothing is sent to a WebWell server.
 - Browsers: Google Chrome and Brave on desktop. Other Chromium browsers may work but are not officially supported. Firefox and Safari are not supported.
-- Maker: Adnan, an independent developer. Contact: info.adnanak@gmail.com
+- Maker: Adnan Khan, an independent developer (https://adnankhan.cc). Contact: info.adnanak@gmail.com
 
 ## Product
 

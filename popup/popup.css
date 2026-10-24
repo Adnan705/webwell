@@ -180,6 +180,7 @@ select.sel:focus{border-color:var(--acc)}
 .links button:hover{color:var(--acc)}
 .links svg{width:16px;height:16px;color:var(--faint)}
 .foot{text-align:center;color:var(--faint);font-size:10.5px;padding:2px 0 4px}
+.foot a{color:inherit;text-decoration:underline;text-underline-offset:2px}.foot a:hover{color:var(--mut,inherit)}
 
 .toast{position:absolute;left:50%;bottom:16px;transform:translate(-50%,10px);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;
   font-size:12px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}

@@ -244,6 +244,7 @@ body.dark .btn.ghost{background:transparent;color:var(--acc);border:1.5px solid 
 
 footer.credit{text-align:center;color:var(--faint);font-size:12px;margin:34px 0 10px}
 footer.credit b{color:var(--mut)}
+footer.credit a{color:inherit;text-decoration:underline;text-underline-offset:2px}footer.credit a:hover{color:var(--ink,inherit)}
 
 /* ============ motion & interaction ============ */
 @keyframes cardIn{from{opacity:0;transform:translateY(14px)}}

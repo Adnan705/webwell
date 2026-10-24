@@ -24,7 +24,7 @@
   <img src="https://img.shields.io/badge/browser-Brave%20%7C%20Chrome-orange" alt="browser">
 </p>
 
-<p align="center"><i>Written & Developed by <b>Adnan</b></i></p>
+<p align="center"><i>Written & Developed by <b><a href="https://adnankhan.cc">Adnan</a></b></i></p>
 
 ---
 
