@@ -22,8 +22,9 @@
       text: 'During a focus session, sites you mark as distracting are blocked. You can also add a mindful pause, a short-video blocker and an adult-content filter.',
       where: 'Dashboard → <b>Protect</b>. Everything there stays off until you switch it on.' },
     { id: 'stats', eyebrow: 'Private screen time', title: 'Your day, in <em>honest</em> numbers.', scene: 'stats',
-      text: 'See your daily score, the sites that took your time and your 24-hour rhythm. It is stored only in this browser: no account, no server.',
+      text: 'See your daily score, the sites that took your time and your 24-hour rhythm. It is stored only in this browser: no account, no server. You choose on the next step whether WebWell may count your time at all.',
       where: 'Tap the <b>chart icon</b> at the top right of your new tab, or the WebWell icon in your toolbar.' },
+    { id: 'privacy' },
     { id: 'yours' }
   ];
 
@@ -96,6 +97,43 @@
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let root = null, step = 0, opts = null, name = '', ended = false;
 
+  // Permissions the user can switch on here. Each needs a click, so it is a real choice.
+  const PERMS = {
+    track: { permissions: ['tabs', 'webNavigation', 'favicon'] },
+    notif: { permissions: ['notifications'] }
+  };
+  let perm = { track: false, notif: false };
+  async function loadPerms() {
+    for (const k of Object.keys(PERMS)) {
+      try { perm[k] = await chrome.permissions.contains(PERMS[k]); } catch (e) { perm[k] = false; }
+    }
+  }
+  // Called straight from the click so the browser accepts the prompt.
+  async function togglePerm(k, btn) {
+    if (!PERMS[k]) return;
+    let on = perm[k];
+    try {
+      on = on ? !(await chrome.permissions.remove(PERMS[k])) : await chrome.permissions.request(PERMS[k]);
+    } catch (e) {}
+    perm[k] = !!on;
+    btn.setAttribute('aria-checked', perm[k]);
+    btn.classList.toggle('on', perm[k]);
+    if (k === 'track') {
+      const n = root && root.querySelector('#wlTrackNote');
+      if (n) n.classList.toggle('hidden', perm.track);
+      try {
+        if (perm.track) {
+          const st = (await chrome.storage.local.get(['settings'])).settings || {};
+          if (st.trackingEnabled === false) { st.trackingEnabled = true; await chrome.storage.local.set({ settings: st }); }
+        }
+      } catch (e) {}
+    }
+  }
+  function permRow(k, title, text) {
+    return '<div class="wl-perm"><div class="wl-perm-t"><b>' + title + '</b><span>' + text + '</span></div>' +
+      '<button type="button" class="wl-sw' + (perm[k] ? ' on' : '') + '" role="switch" aria-checked="' + perm[k] + '" aria-label="' + title + '" data-perm="' + k + '"><i></i></button></div>';
+  }
+
   let bgCur = '';
   function tiles() {
     const V = window.WW_VBG;
@@ -124,7 +162,20 @@
         '<h2 class="wl-title" id="wlTitle">A calmer new tab, <em>made</em> for you.</h2>' +
         '<p class="wl-text">Let’s set it up in under a minute. What should we call you?</p>' +
         '<input class="wl-name" id="wlName" type="text" maxlength="40" placeholder="Your name" autocomplete="off" value="' + esc(name) + '">' +
-        '<p class="wl-hint">Shown in your greeting. You can change it any time in Settings.</p>' +
+        '<p class="wl-hint">Shown in your greeting. You can change it any time in Settings. Your data never leaves this device.</p>' +
+        '</div>';
+    }
+    if (s.id === 'privacy') {
+      return '<div class="wl-solo wl-priv">' +
+        '<p class="wl-eyebrow">Your privacy, your choice</p>' +
+        '<h2 class="wl-title" id="wlTitle">You decide what WebWell <em>can see</em>.</h2>' +
+        '<p class="wl-text">WebWell never collects your data. No account, no servers, no ads. Everything stays on this device, and you can change these any time.</p>' +
+        '<div class="wl-perms">' +
+          permRow('track', 'Screen-time tracking', 'Counts the time you spend on the site in your active tab, so you can see where your day goes. Your browser may call this “read your browsing history”. It is never sent anywhere.') +
+          permRow('notif', 'Alerts', 'A gentle nudge when a focus session ends or a time limit is reached.') +
+        '</div>' +
+        '<p class="wl-warn' + (perm.track ? ' hidden' : '') + '" id="wlTrackNote">Without tracking, WebWell cannot count your time, so you won’t get screen-time stats, site limits or the blocked-page message. The timer, music, tasks and backgrounds still work.</p>' +
+        '<p class="wl-later"><b>Asked only if you use it:</b> blocking sites, SoundCloud and Spotify, and the AI chat. We will ask first, at that moment.</p>' +
         '</div>';
     }
     if (s.id === 'yours') {
@@ -162,6 +213,7 @@
     root.querySelector('.wl-card').setAttribute('data-step', STEPS[step].id);
     fitScene();
     root.querySelectorAll('.wl-bg').forEach(b => b.addEventListener('click', () => pickBg(b.dataset.bg)));
+    root.querySelectorAll('.wl-sw').forEach(b => b.addEventListener('click', () => togglePerm(b.dataset.perm, b)));
     const input = root.querySelector('#wlName');
     if (input) {
       input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); next(); } });
@@ -255,6 +307,7 @@
     if (!shouldShow(state, !!opts.name, forced)) return false;
     if (!forced && document.body.classList.contains('locked')) return false;
     name = opts.name || ''; step = 0; ended = false; bgCur = bgChoiceFor(opts.bg);
+    await loadPerms();
     build(); render();
     return true;
   };

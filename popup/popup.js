@@ -38,6 +38,7 @@ async function load() {
   S.days = S.days || {}; S.cats = S.categories || {}; S.limits = S.limits || {};
   const lp = Object.assign({ mins: 25, sound: 'rain', block: true }, S.lockPrefs || {});
   if (!pick.task) { pick.mins = lp.mins; pick.sound = lp.sound; pick.block = lp.block !== false; }
+  S.track = await hasTracking();
   try { const r = await chrome.runtime.sendMessage({ type: 'webwell-live' }); live = r && r.live; } catch (e) { live = null; }
   try {
     const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -61,10 +62,10 @@ function toast(msg) {
 /* ---------------- header ---------------- */
 function renderHeader() {
   $('dateLine').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
-  const on = S.settings.trackingEnabled;
+  const on = S.settings.trackingEnabled && S.track;
   const p = $('trackPill');
   p.className = 'pill' + (on ? '' : ' off');
-  p.innerHTML = '<i></i>' + (on ? 'Tracking' : 'Paused');
+  p.innerHTML = '<i></i>' + (on ? 'Tracking' : S.track ? 'Paused' : 'Off');
 }
 
 /* ---------------- Today ---------------- */
@@ -100,7 +101,8 @@ function renderToday() {
     html += '<div class="sub" style="margin-top:10px">' + verdict(m.score) + (m.yesterday && m.total > 60
       ? ' · <span class="' + (delta > 0 ? 'up' : 'down') + '">' + (delta > 0 ? '▲ ' : '▼ ') + fmtDur(Math.abs(delta)) + '</span> vs yesterday' : '') + '</div>';
   } else {
-    html += '<div class="empty">Nothing tracked yet. It starts as you browse.</div>';
+    html += S.track ? '<div class="empty">Nothing tracked yet. It starts as you browse.</div>'
+      : '<div class="empty">Screen-time tracking is off, so WebWell cannot count your time. Turning it on lets it see which site is in your active tab. That stays on this device and is never sent anywhere.<br><button class="btn" id="trackAllow" style="margin-top:10px">Turn on tracking</button></div>';
   }
   if (live && live.domain && S.settings.trackingEnabled) {
     html += '<div class="live"><span class="dot"></span>Now on <b>' + esc(live.domain) + '</b><span class="t">' + fmtDur(live.elapsed) + '</span></div>';
@@ -130,6 +132,12 @@ function renderToday() {
   view.innerHTML = html;
 
   $('seeAll').addEventListener('click', () => openDash(''));
+  if ($('trackAllow')) $('trackAllow').addEventListener('click', async () => {
+    S.track = await ensureTracking();
+    if (!S.track) { toast('Tracking needs your OK to see the active tab'); return; }
+    S.settings.trackingEnabled = true;
+    await storeSet({ settings: S.settings }); renderHeader(); renderToday(); toast('Tracking on');
+  });
   const chips = $('catChips');
   if (chips) chips.querySelectorAll('.chip').forEach(b => b.addEventListener('click', async () => {
     const c = Object.assign({}, S.cats); c[tabDomain] = b.dataset.c;
@@ -139,6 +147,7 @@ function renderToday() {
     const v = parseInt($('limIn').value, 10), lim = Object.assign({}, S.limits);
     if (v > 0 && v <= 1440) lim[tabDomain] = v; else delete lim[tabDomain];
     await storeSet({ limits: lim }); S.limits = lim;
+    if (v > 0 && !(await ensureNotifications())) { toast('Limit saved. Allow notifications to be alerted when you reach it.'); return; }
     toast(v > 0 ? 'Limit set: ' + v + ' min a day' : 'Limit removed');
   });
 }
@@ -285,6 +294,7 @@ function wireFocusSetup() {
   $('fBlock').addEventListener('change', e => { pick.block = e.target.checked; });
   $('fStart').addEventListener('click', async () => {
     let block = pick.block;
+    if (!block) await askAlertsOnce();                     // session-end alerts need the notifications permission
     if (block) {
       let ok = false;
       try { ok = await chrome.permissions.contains(ALL_URLS) || await chrome.permissions.request(ALL_URLS); } catch (e) {}
@@ -296,6 +306,16 @@ function wireFocusSetup() {
     pick.task = '';
     await load(); render();
   });
+}
+
+// Ask for alerts the first time someone starts a focus session; never nag after a No.
+async function askAlertsOnce() {
+  try {
+    if (await hasNotifications()) return;
+    if ((await chrome.storage.local.get('notifAsked')).notifAsked) return;
+    await chrome.storage.local.set({ notifAsked: true });
+    await ensureNotifications();
+  } catch (e) {}
 }
 
 /* ---------------- Protect ---------------- */
@@ -357,7 +377,7 @@ function renderProtect() {
 function renderSettings() {
   const s = S.settings, clock24 = !!S.profile.clock24;
   view.innerHTML = '<section class="card">' +
-    toggleRow('sTrack', 'Track my browsing', 'Counts active-tab time on this device.', s.trackingEnabled) +
+    toggleRow('sTrack', 'Track my browsing', 'Counts active-tab time on this device. Needs your OK to see the active tab.', s.trackingEnabled && S.track) +
     toggleRow('sDark', 'Dark mode', 'For the dashboard and this popup.', s.darkMode) +
     toggleRow('sNudge', 'Slump forecast alert', 'A heads-up 15 minutes before your usual slump.', s.forecastNudge) +
     toggleRow('sClock', '24-hour clock', 'On your new tab page.', clock24) +
@@ -368,12 +388,24 @@ function renderSettings() {
     '<section class="card"><div class="links"><button id="lOpen">Open dashboard<span>' + ICON.chev + '</span></button>' +
     '<button id="lSet">All settings<span>' + ICON.chev + '</span></button>' +
     '<button id="lNew">Open a new tab<span>' + ICON.chev + '</span></button></div></section>' +
-    '<div class="foot">WebWell v' + esc(chrome.runtime.getManifest().version) + ' · Written &amp; Developed by <a href="https://adnankhan.cc" target="_blank" rel="noopener">Adnan</a></div>';
+    '<div class="foot">WebWell v' + esc(chrome.runtime.getManifest().version) + ' · Developed by <a href="https://adnankhan.cc" target="_blank" rel="noopener">Adnan</a></div>';
 
   const saveSettings = async patch => { S.settings = Object.assign({}, S.settings, patch); await storeSet({ settings: S.settings }); };
-  $('sTrack').addEventListener('change', async e => { await saveSettings({ trackingEnabled: e.target.checked }); renderHeader(); toast(e.target.checked ? 'Tracking resumed' : 'Tracking paused'); });
+  $('sTrack').addEventListener('change', async e => {
+    const want = e.target.checked;
+    if (want) {
+      S.track = await ensureTracking();   // first await, so the click still counts as a gesture
+      if (!S.track) { e.target.checked = false; renderHeader(); toast('Tracking needs your OK to see the active tab'); return; }
+    }
+    await saveSettings({ trackingEnabled: want }); renderHeader(); toast(want ? 'Tracking on' : 'Tracking paused');
+  });
   $('sDark').addEventListener('change', async e => { await saveSettings({ darkMode: e.target.checked }); document.body.classList.toggle('dark', e.target.checked); });
-  $('sNudge').addEventListener('change', async e => { await saveSettings({ forecastNudge: e.target.checked }); toast(e.target.checked ? 'Slump alert on' : 'Slump alert off'); });
+  $('sNudge').addEventListener('change', async e => {
+    const on = e.target.checked;
+    await saveSettings({ forecastNudge: on });            // save first: the permission prompt can close this popup
+    if (on && !(await ensureNotifications())) { e.target.checked = false; await saveSettings({ forecastNudge: false }); toast('Allow notifications to get this alert.'); return; }
+    toast(on ? 'Slump alert on' : 'Slump alert off');
+  });
   $('sClock').addEventListener('change', async e => {
     S.profile = Object.assign({}, S.profile, { clock24: e.target.checked }); await storeSet({ profile: S.profile }); toast(e.target.checked ? '24-hour clock' : '12-hour clock');
   });
@@ -403,7 +435,11 @@ $('tabs').addEventListener('click', e => {
 });
 $('openDash').addEventListener('click', () => openDash(''));
 $('trackPill').addEventListener('click', async () => {
-  S.settings.trackingEnabled = !S.settings.trackingEnabled;
+  if (!S.track) {
+    S.track = await ensureTracking();
+    if (!S.track) return;
+    S.settings.trackingEnabled = true;
+  } else S.settings.trackingEnabled = !S.settings.trackingEnabled;
   await storeSet({ settings: S.settings }); renderHeader(); if (tab === 'today' || tab === 'settings') render();
 });
 

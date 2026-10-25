@@ -218,7 +218,7 @@ function renderActivity(entries, data) {
     '<div class="act-bar"><div style="width:' + Math.max(3, Math.round(e.secs / max * 100)) + '%;background:' + CATEGORY_META[e.cat].color + '"></div></div>' +
     '<div class="act-val">' + fmtDur(e.secs) + '</div>' +
     '</div>').join('')
-    : '<div class="empty">' + (entries.length ? 'No websites match.' : 'Nothing tracked this day.') + '</div>';
+    : '<div class="empty">' + (entries.length ? 'No websites match.' : trackOK ? 'Nothing tracked this day.' : 'Screen-time tracking is off. Turn it on in Settings to count your time.') + '</div>';
 }
 
 let overviewSeq = 0;
@@ -668,7 +668,9 @@ async function renderSites() {
       const v = parseInt(inp.value, 10);
       if (v > 0) lim[inp.dataset.d] = v; else delete lim[inp.dataset.d];
     });
-    await storeSet({ limits: lim }); toast('Daily limits saved.');
+    await storeSet({ limits: lim });
+    if (Object.keys(lim).length && !(await ensureNotifications())) { toast('Daily limits saved. Allow notifications to be alerted when you reach one.'); return; }
+    toast('Daily limits saved.');
   });
 }
 
@@ -795,7 +797,9 @@ async function mountChat(rootEl) {
       typing.remove();
       pushMsg('ai', err.code === 'no-key'
         ? 'No API key set — add it in Settings → AI features.'
-        : 'Hmm, that didn\'t work (' + err.message + '). Check your key in Settings → AI.');
+        : err.code === 'no-access'
+          ? 'To answer, I need your OK to contact Google\'s AI. Press Send again and choose Allow.'
+          : 'Hmm, that didn\'t work (' + err.message + '). Check your key in Settings → AI.');
     }
     busy = false;
   };
@@ -974,8 +978,8 @@ async function renderSettings() {
     '</div></div></div>' +
     '<div class="card" style="margin-top:16px"><h3>Tracking</h3>' +
     setRow('Track my browsing',
-      'When on, WebWell records active-tab time per website. Everything stays on this device.',
-      '<label class="toggle"><input type="checkbox" id="setTracking" ' + (s.trackingEnabled ? 'checked' : '') + '><span class="tk"></span></label>') +
+      'When on, WebWell records active-tab time per website. Everything stays on this device. Needs your OK to see the active tab; without it there are no stats or site limits.',
+      '<label class="toggle"><input type="checkbox" id="setTracking" ' + (s.trackingEnabled && trackOK ? 'checked' : '') + '><span class="tk"></span></label>') +
     setRow('Idle timeout',
       'Stop counting after this many seconds without mouse/keyboard activity.',
       '<input class="num-in" type="number" id="setIdle" min="15" max="900" value="' + s.idleTimeout + '"> sec') +
@@ -1051,14 +1055,19 @@ async function renderSettings() {
     '</div>' +
     '<div class="card" style="margin-top:16px"><h3>How it works</h3>' +
     '<div style="font-size:13px;color:var(--mut);line-height:1.7">' +
-    'WebWell counts time only for the tab you are actively looking at, in a focused window, while you are not idle. ' +
+    'WebWell counts time only for the tab you are actively looking at, in a focused window, while you are not idle. A tab that is playing sound (a show or a video) counts as active even if you are not touching the keyboard. ' +
     'Switching tabs, minimizing the browser, or walking away pauses the timer. No URLs, page titles, or keystrokes are stored — only the domain name and seconds. ' +
     'There are no accounts, no servers, no analytics. Uninstalling the extension removes everything.' +
     '</div></div>';
 
   document.getElementById('setTracking').addEventListener('change', async e => {
-    const st = await getSettings(); st.trackingEnabled = e.target.checked;
-    await storeSet({ settings: st }); updatePill(); toast(e.target.checked ? 'Tracking resumed.' : 'Tracking paused.');
+    const want = e.target.checked;
+    if (want) {
+      trackOK = await ensureTracking();   // first await, so the click still counts as a gesture
+      if (!trackOK) { e.target.checked = false; updatePill(); toast('Tracking needs your OK to see the active tab.'); return; }
+    }
+    const st = await getSettings(); st.trackingEnabled = want;
+    await storeSet({ settings: st }); updatePill(); toast(want ? 'Tracking on.' : 'Tracking paused.');
   });
   document.getElementById('setIdle').addEventListener('change', async e => {
     const v = Math.min(900, Math.max(15, parseInt(e.target.value, 10) || 60));
@@ -1072,9 +1081,11 @@ async function renderSettings() {
     await storeSet({ settings: st }); applyTheme();
   });
   document.getElementById('setForecastNudge').addEventListener('change', async e => {
-    const st = await getSettings(); st.forecastNudge = e.target.checked;
+    const on = e.target.checked;
+    const st = await getSettings(); st.forecastNudge = on;
     await storeSet({ settings: st });
-    toast(e.target.checked ? 'Slump warnings on.' : 'Slump warnings off.');
+    if (on && !(await ensureNotifications())) { e.target.checked = false; st.forecastNudge = false; await storeSet({ settings: st }); toast('Allow notifications to get slump warnings.'); return; }
+    toast(on ? 'Slump warnings on.' : 'Slump warnings off.');
   });
   storeGet(['aiKey']).then(r => {
     const inp = document.getElementById('setAiKey');
@@ -1392,11 +1403,14 @@ function dayTitle() {
   return new Date(viewingKey + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
+let trackOK = true;   // whether the browser has let WebWell see the active tab (optional permission)
 async function updatePill() {
   const s = await getSettings();
+  trackOK = await hasTracking();
+  const on = s.trackingEnabled && trackOK;
   const p = document.getElementById('trackingState');
-  p.innerHTML = s.trackingEnabled ? '<span class="pulse"></span>Tracking' : '○ Paused';
-  p.classList.toggle('off', !s.trackingEnabled);
+  p.innerHTML = on ? '<span class="pulse"></span>Tracking' : trackOK ? '○ Paused' : '○ Off';
+  p.classList.toggle('off', !on);
 }
 
 async function applyTheme() {

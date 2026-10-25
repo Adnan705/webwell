@@ -997,13 +997,13 @@ body { background: transparent; }
             <h3>Every permission, explained</h3>
           </div>
           <ul class="perms">
-            <li><code>tabs</code><span>See which site is in your active tab</span></li>
+            <li><code>tabs (your choice)</code><span>Counts time on the site in your active tab. Off until you switch it on; it stays on your device</span></li>
             <li><code>idle</code><span>Pause tracking when you step away</span></li>
             <li><code>storage</code><span>Keep your stats and settings on this device</span></li>
-            <li><code>notifications</code><span>Limit alerts and focus-session reminders</span></li>
             <li><code>offscreen</code><span>Keep music playing after you close the tab</span></li>
-            <li><code>declarativeNetRequest</code><span>Block sites using the browser’s own rules</span></li>
-            <li><code>All sites (optional)</code><span>Only asked when you turn on blocking</span></li>
+            <li><code>notifications (asked later)</code><span>Only when you turn on limits or alerts</span></li>
+            <li><code>All sites (asked later)</code><span>Only when you turn on blocking</span></li>
+            <li><code>Music &amp; AI (asked later)</code><span>Only when you play SoundCloud/Spotify or use AI chat</span></li>
           </ul>
           <span></span>
         </article>
@@ -1045,6 +1045,7 @@ body { background: transparent; }
         <details><summary>Can I track my screen time in Chrome?<span class="plus" aria-hidden="true"></span></summary><p>Yes. Chrome has no built-in screen time on desktop, so WebWell counts the time you spend on each website for you, in the background. Open the dashboard to see today's total, each site, a daily score and your busiest hours. It records only the website name and the seconds, and keeps them in your browser, with no account. <a class="link" href="/blog/track-screen-time-chrome-privately">Read how screen-time tracking works in Chrome</a>.</p></details>
         <details><summary>Is my data sent to a server?<span class="plus" aria-hidden="true"></span></summary><p>No. Your stats, settings and saved songs live in your browser. Music from Spotify, SoundCloud and SomaFM, and the AI chat, only connect to their own services when you use them.</p></details>
         <details><summary>Will WebWell block websites?<span class="plus" aria-hidden="true"></span></summary><p>Only when you ask it to. A focus session blocks the sites you marked as distracting while it runs. The adult filter, short-video blocker and your own list work only if you turn them on. Daily time limits just send a notification.</p></details>
+        <details><summary>Does WebWell track my browsing?<span class="plus" aria-hidden="true"></span></summary><p>Only if you turn it on. The install prompt asks for nothing but the new tab page. In the welcome screens you choose whether WebWell may count your screen time, and your browser may call that “read your browsing history”. The numbers stay on your device, WebWell has no servers to send them to, and the code is open on GitHub so you can check. Leave it off and the timer, music, tasks and backgrounds still work.</p></details>
         <details><summary>Why does it ask for access to all sites?<span class="plus" aria-hidden="true"></span></summary><p>Only when you switch on a blocking feature, because the browser needs that permission to redirect a blocked page. WebWell never reads or stores what’s on the pages you visit.</p></details>
         <details><summary>Can my child switch the filter off?<span class="plus" aria-hidden="true"></span></summary><p>Set a parent PIN and the protections can’t be turned off or reset without it. A PIN can’t stop someone removing the extension from the browser’s settings, so on a child’s computer also use a supervised profile.</p></details>
         <details><summary>How does Spotify work?<span class="plus" aria-hidden="true"></span></summary><p>Paste a link to a song, album or playlist and it plays through Spotify’s own player. If you’re signed in to Spotify in your browser you’ll hear full songs; if not, Spotify allows 30-second previews. WebWell never sees your login.</p></details>

@@ -18,7 +18,7 @@ const W = (() => { const m = { exports: {} }; new Function('module', 'window', S
 async function boot({ state, name = '', forced = false, locked = false, bg } = {}) {
   const dom = new JSDOM('<!doctype html><body class="' + (locked ? 'locked' : '') + '"></body>', { runScripts: 'outside-only', url: 'chrome-extension://x/newtab/newtab.html', pretendToBeVisual: true });
   const w = dom.window; const store = { ntWelcome: state }; const names = [], bgs = []; let ended = 0;
-  w.chrome = { storage: { local: { get: async () => JSON.parse(JSON.stringify(store)), set: async o => { Object.assign(store, JSON.parse(JSON.stringify(o))); } } } };
+  w.chrome = { permissions: { contains: async () => false, request: async () => true, remove: async () => true }, storage: { local: { get: async () => JSON.parse(JSON.stringify(store)), set: async o => { Object.assign(store, JSON.parse(JSON.stringify(o))); } } } };
   w.eval(SRC);
   const shown = await w.WW_WELCOME.start({ name, bg, forced, onName: async v => { names.push(v); }, onBackground: async b => { bgs.push(b); }, onEnd: () => { ended++; } });
   const q = s => w.document.querySelector(s);
@@ -32,7 +32,7 @@ async function boot({ state, name = '', forced = false, locked = false, bg } = {
   await ok('rule: someone who already has a name (an update) does not', () => assert.strictEqual(W.shouldShow(null, true, false), false));
   await ok('rule: never again after finishing or skipping', () => assert.strictEqual(W.shouldShow({ done: true }, false, false), false));
   await ok('rule: "Show the tour again" always shows it', () => assert.strictEqual(W.shouldShow({ done: true }, true, true), true));
-  await ok('it covers the name, every main feature and a closing step', () => assert.deepStrictEqual(W.STEPS.map(s => s.id), ['name', 'focus', 'music', 'protect', 'stats', 'yours']));
+  await ok('it covers the name, every main feature and a closing step', () => assert.deepStrictEqual(W.STEPS.map(s => s.id), ['name', 'focus', 'music', 'protect', 'stats', 'privacy', 'yours']));
   await ok('every feature step says where to find it and has an animated scene', () => {
     const feats = W.STEPS.filter(s => s.scene);
     assert.strictEqual(feats.length, 4);
@@ -61,6 +61,10 @@ async function boot({ state, name = '', forced = false, locked = false, bg } = {
   t.click('#wlNext'); await tick();
   await ok('an unchanged name is not saved twice', () => assert.deepStrictEqual(t.names, ['Sam']));
   t.key('ArrowRight'); await tick(); t.key('ArrowRight'); await tick(); t.key('ArrowRight'); await tick(); t.key('ArrowRight'); await tick();
+  await ok('the privacy step offers tracking and alerts as switches that start off', () => { assert.strictEqual(t.step(), 'privacy'); const sw = [...t.w.document.querySelectorAll('.wl-sw')]; assert.strictEqual(sw.length, 2); assert(sw.every(b => b.getAttribute('aria-checked') === 'false')); assert(t.q('#wlTrackNote') && !t.q('#wlTrackNote').classList.contains('hidden')); });
+  t.click('.wl-sw[data-perm=track]'); await tick();
+  await ok('turning tracking on flips the switch and hides the warning', () => { assert.strictEqual(t.q('.wl-sw[data-perm=track]').getAttribute('aria-checked'), 'true'); assert(t.q('#wlTrackNote').classList.contains('hidden')); });
+  t.key('ArrowRight'); await tick();
   await ok('arrow keys move through the steps to the last one', () => { assert.strictEqual(t.step(), 'yours'); assert.match(t.q('#wlNext').textContent, /Start using WebWell/); assert(t.q('.wl-title').textContent.includes('Sam')); });
   await ok('the last step hides "Skip tour"', () => assert(t.q('#wlSkip').classList.contains('invisible')));
   await ok('the last step offers six backgrounds, with the current one (photos) selected', () => {

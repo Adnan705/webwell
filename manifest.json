@@ -13,14 +13,18 @@
   "service_worker": "background.js"
  },
  "description": "A calm new tab with focus timer, music, site blocking and private screen-time tracking. Your data stays on your device.",
- "host_permissions": [
+ "optional_host_permissions": [
+  "<all_urls>",
   "https://generativelanguage.googleapis.com/*",
   "https://*.soundcloud.com/*",
   "https://*.sndcdn.com/*",
   "https://open.spotify.com/*"
  ],
- "optional_host_permissions": [
-  "<all_urls>"
+ "optional_permissions": [
+  "notifications",
+  "tabs",
+  "webNavigation",
+  "favicon"
  ],
  "icons": {
   "128": "icons/icon128.png",
@@ -32,16 +36,12 @@
  "name": "WebWell — Daily Browser Monitor",
  "options_page": "dashboard/dashboard.html",
  "permissions": [
-  "tabs",
   "storage",
   "idle",
   "alarms",
-  "notifications",
   "offscreen",
-  "favicon",
-  "declarativeNetRequest",
+  "declarativeNetRequestWithHostAccess",
   "scripting",
-  "webNavigation",
   "search"
  ],
  "declarative_net_request": {
@@ -54,7 +54,7 @@
   ]
  },
  "short_name": "WebWell",
- "version": "1.8.1",
+ "version": "1.8.2",
  "chrome_url_overrides": {
   "newtab": "newtab/newtab.html"
  },

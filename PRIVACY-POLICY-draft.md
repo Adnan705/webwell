@@ -21,11 +21,11 @@ WebWell is a browser extension that shows you how you spend your time on the web
 - **Saved songs** (the heart button) are stored only on your device, in your browser's local storage.
 
 ## Permissions
-- **Tabs, idle, alarms, web navigation:** to know which site is active, pause when you step away, run the focus timer and show the right message on the blocked page.
+- **Idle, alarms:** to pause when you step away and run the focus timer.
+- **Tabs, web navigation, site icons (optional, you choose):** to know which site is active, count screen time and show the right message on the blocked page. Without them WebWell cannot count your time.
 - **Storage:** to keep your stats and settings on your device.
-- **Notifications:** for time-limit alerts and focus-session reminders.
 - **Offscreen:** to keep music playing after you close the new tab.
-- **Declarative net request, scripting, access to all sites (optional):** to block sites and hide short-video feeds. WebWell only asks for site access when you turn on a blocking feature.
+- **Asked only when you use the feature (optional):** notifications (limit alerts, focus reminders), access to all sites (blocking and hiding short-video feeds), SoundCloud/Spotify (music) and Google Gemini (AI chat).
 - **Search:** so the new tab's search box uses your browser's default search engine.
 
 ## Data deletion

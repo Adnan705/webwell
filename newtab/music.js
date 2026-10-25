@@ -107,9 +107,32 @@ function contextItem() {
   return { id: 'sp:' + c.url, kind: 'spotify', url: c.url, title: c.name || 'Spotify', sub: spLabel(c.url), art: httpArt(c.cover) || DEFAULT_ART };
 }
 
+/* ---------------- permission to reach SoundCloud / Spotify ---------------- */
+// Both are optional permissions, asked for the first time someone plays from that service.
+const MUSIC_ACCESS = {
+  soundcloud: { origins: ['https://*.soundcloud.com/*', 'https://*.sndcdn.com/*'] },
+  spotify: { origins: ['https://open.spotify.com/*'] }
+};
+async function hasMusicAccess(kind) {
+  const spec = MUSIC_ACCESS[kind];
+  if (!spec) return true;
+  try { return await chrome.permissions.contains(spec); } catch (e) { return false; }
+}
+async function ensureMusicAccess(kind) {
+  const spec = MUSIC_ACCESS[kind];
+  if (!spec) return true;
+  try { return (await chrome.permissions.contains(spec)) || (await chrome.permissions.request(spec)); } catch (e) { return false; }
+}
+
 /* ---------------- playing things ---------------- */
-function playItem(item) {
+async function playItem(item) {
   if (!item) return;
+  if ((item.kind === 'soundcloud' || item.kind === 'spotify') && !(await ensureMusicAccess(item.kind))) {
+    const name = item.kind === 'spotify' ? 'Spotify' : 'SoundCloud';
+    if (item.kind === 'spotify') showSpHint('Allow access to ' + name + ' to play it here.', 'Allow', () => playItem(item));
+    else scStatus('Allow access to ' + name + ' to play and search. Press play again and choose Allow.');
+    return;
+  }
   musicState.last = item;
   if (item.kind === 'radio') { musicState.station = item.idx; musicState.tab = 'radio'; send({ cmd: 'play-station', idx: item.idx }); }
   else if (item.kind === 'ambient') { musicState.ambient = item.sound; send({ cmd: 'ambient-play', kind: item.sound }); }
@@ -322,6 +345,7 @@ function scStatus(msg) {
 let scSearching = false;
 async function doSongSearch(q) {
   if (!q || scSearching) return;
+  if (!(await ensureMusicAccess('soundcloud'))) { scStatus('Allow access to SoundCloud to search. Press Search again and choose Allow.'); return; }
   scSearching = true; scStatus('Searching…');
   try {
     const tracks = await scSearch(q);
@@ -395,6 +419,7 @@ async function spOembed(url) {
   } catch (e) { return null; }
 }
 async function loadSuggestedMeta() {
+  if (!(await hasMusicAccess('spotify'))) return;   // no click here, so never prompt; covers appear once Spotify is allowed
   let changed = false;
   await Promise.all(SPOTIFY_SUGGESTED.filter(s => !spMeta[s.url]).map(async s => { if (await spOembed(s.url)) changed = true; }));
   if (changed) renderSuggested();
@@ -402,6 +427,7 @@ async function loadSuggestedMeta() {
 async function playSpotifyLink(raw) {
   const p = parseSpotify(raw);
   if (!p) return;
+  if (!(await ensureMusicAccess('spotify'))) { showSpHint('Allow access to Spotify to play it here.', 'Allow', () => playSpotifyLink(raw)); return; }
   const m = await spOembed(p.url);
   playItem(spItem(p.url, m && m.title, m && m.art));
 }

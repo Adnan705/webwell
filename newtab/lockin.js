@@ -82,9 +82,20 @@
   }
   function closeSheet() { $l('lkSheet').classList.add('hidden'); }
 
+  // Ask for alerts the first time someone starts a focus session; never nag after a No.
+  async function askAlertsOnce() {
+    try {
+      if (await hasNotifications()) return;
+      if ((await chrome.storage.local.get('notifAsked')).notifAsked) return;
+      await chrome.storage.local.set({ notifAsked: true });
+      await ensureNotifications();
+    } catch (e) {}
+  }
+
   async function start() {
     const block = $l('lkBlock').checked;
     let canBlock = true;
+    if (!block) await askAlertsOnce();   // session-end alerts need the notifications permission (asked once)
     // Must be the first await after the click: Chrome only shows the
     // permission prompt in response to a user gesture.
     if (block) {

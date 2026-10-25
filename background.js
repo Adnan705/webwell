@@ -44,8 +44,19 @@ async function saveSession() {
 async function trueIdleState() {
   try {
     const s = await getSettings();
-    return await chrome.idle.queryState(s.idleTimeout);
+    const st = await chrome.idle.queryState(s.idleTimeout);
+    // Watching a show means no mouse or keyboard input, which the browser reads as
+    // "idle". If the tab you are looking at is playing sound, you are still there.
+    if (st === 'idle' && await activeTabAudible()) return 'active';
+    return st;
   } catch (e) { return 'active'; }
+}
+
+async function activeTabAudible() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    return !!(tab && tab.audible);
+  } catch (e) { return false; }
 }
 
 async function snapshotActiveTab() {
@@ -175,6 +186,7 @@ chrome.idle.onStateChanged.addListener((state) => serialized(async () => {
 // ---- periodic heartbeat: re-establish truth, flush, check limits ----
 chrome.alarms.onAlarm.addListener((alarm) => serialized(async () => {
   if (alarm.name === 'lockin-end') { await finishLockinPhase(); return; }
+  if (alarm.name === 'ww-protect-retry') { await syncProtectRules(); return; }
   if (alarm.name !== 'webwell-tick') return;
   try { await updateBadge(); } catch (e) {}
   try { await expirePauseAllows(); } catch (e) {}
@@ -187,6 +199,7 @@ chrome.alarms.onAlarm.addListener((alarm) => serialized(async () => {
 }));
 
 async function checkLimits() {
+  if (!chrome.notifications) return;   // alerts not allowed yet: do not use up today's alert
   const limits = await getLimits();
   const domains = Object.keys(limits);
   if (!domains.length) return;
@@ -202,7 +215,7 @@ async function checkLimits() {
     if (spent >= limitSecs && !(notified.domains || []).includes(d)) {
       notified.domains.push(d);
       await storeSet({ notifiedLimits: notified });
-      chrome.notifications.create('limit-' + d + '-' + key, {
+      notify('limit-' + d + '-' + key, {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: 'WebWell: time limit reached',
@@ -212,7 +225,14 @@ async function checkLimits() {
   }
 }
 
+// Alerts are an optional permission. Without it nothing is shown (and nothing crashes).
+function notify(id, opts) {
+  if (!chrome.notifications) return false;
+  try { chrome.notifications.create(id, opts); return true; } catch (e) { return false; }
+}
+
 async function checkMilestones() {
+  if (!chrome.notifications) return;
   // Gentle nudge when distracting time crosses 50% of today's browsing.
   const key = dayKey(Date.now());
   const r = await storeGet(['notifiedMilestones']);
@@ -227,7 +247,7 @@ async function checkMilestones() {
   }
   if (distracting >= data.total * 0.5) {
     await storeSet({ notifiedMilestones: { day: key, halfDistracting: true } });
-    chrome.notifications.create('milestone-distracting-' + key, {
+    notify('milestone-distracting-' + key, {
       type: 'basic',
       iconUrl: 'icons/icon128.png',
       title: 'WebWell: check-in',
@@ -253,7 +273,8 @@ async function checkForecastNudge() {
   if (minsBefore > 0 && minsBefore <= 15) {
     // Mark the day seen only if the notification actually goes out.
     try {
-      chrome.notifications.create('forecast-' + todayK, {
+      if (!chrome.notifications) return;   // no permission yet: try again next time
+      notify('forecast-' + todayK, {
         type: 'basic',
         iconUrl: 'icons/icon128.png',
         title: 'WebWell forecast 🔮',
@@ -389,6 +410,9 @@ function syncProtectRules() {
 }
 
 async function applyProtectRules() {
+  // Blocking is an optional permission. Until it is granted there is nothing to do; try again shortly in case
+  // it was only just granted and this worker has not picked up the new API yet.
+  if (!chrome.declarativeNetRequest) { try { chrome.alarms.create('ww-protect-retry', { delayInMinutes: 0.2 }); } catch (e) {} return; }
   const r = await storeGet(['protect', 'lockin', 'categories']);
   const p = protectState(r.protect);
   const rules = buildDynamicRules(p, r.lockin, r.categories || {});
@@ -432,10 +456,19 @@ async function syncShortsScript(p) {
 
 // The blocked/pause pages are reached by a redirect, so they ask here which
 // address the tab was trying to open.
-chrome.webNavigation.onBeforeNavigate.addListener(d => {
-  if (d.frameId !== 0 || !/^https?:/.test(d.url)) return;
-  chrome.storage.session.set({ ['nav' + d.tabId]: d.url }).catch(() => {});
-});
+let navHooked = false;
+function hookNavigation() {
+  if (navHooked || !chrome.webNavigation) return;
+  navHooked = true;
+  chrome.webNavigation.onBeforeNavigate.addListener(d => {
+    if (d.frameId !== 0 || !/^https?:/.test(d.url)) return;
+    chrome.storage.session.set({ ['nav' + d.tabId]: d.url }).catch(() => {});
+  });
+}
+hookNavigation();
+// Tracking is optional: the moment it is allowed, start counting without a restart.
+chrome.permissions.onAdded.addListener(() => serialized(async () => { hookNavigation(); await resync(); }));
+chrome.permissions.onRemoved.addListener(() => serialized(async () => { await stopSession(); }));
 chrome.tabs.onRemoved.addListener(tabId => { chrome.storage.session.remove('nav' + tabId).catch(() => {}); });
 async function lastNavFor(tabId) {
   if (tabId == null) return '';
@@ -457,6 +490,7 @@ async function countBlock(reason) {
 // Mindful pause: "Continue" opens the site and lets it through for 10 minutes.
 const PAUSE_ALLOW_MS = 10 * 60 * 1000;
 async function allowAfterPause(url) {
+  if (!chrome.declarativeNetRequest) return false;
   const host = domainOf(url);
   if (!host) return false;
   const cats = await getCategories();
@@ -484,6 +518,7 @@ async function allowAfterPause(url) {
   return true;
 }
 async function expirePauseAllows() {
+  if (!chrome.declarativeNetRequest) return;
   const r = await chrome.storage.session.get('pauseAllows');
   const allows = r.pauseAllows || {};
   const now = Date.now();
@@ -561,7 +596,7 @@ async function completeFocus(l, focusedMs, finished) {
   stopPlayerSound();
   const now = Date.now();
   if (finished && l.breakMins > 0) {
-    chrome.notifications.create('lockin-' + now, {
+    notify('lockin-' + now, {
       type: 'basic', iconUrl: 'icons/icon128.png', title: 'Session complete',
       message: mins + ' minutes focused. Take a ' + l.breakMins + '-minute break.'
     });
@@ -569,7 +604,7 @@ async function completeFocus(l, focusedMs, finished) {
       totalMs: l.breakMins * 60000, startedAt: now, endsAt: now + l.breakMins * 60000, pausedLeft: null, block: false } });
   } else {
     if (finished) {
-      chrome.notifications.create('lockin-' + now, {
+      notify('lockin-' + now, {
         type: 'basic', iconUrl: 'icons/icon128.png', title: 'Session complete', message: mins + ' minutes focused. Nice work.'
       });
     }
@@ -584,7 +619,7 @@ async function finishLockinPhase() {
   if (l.phase === 'focus') {
     await completeFocus(l, l.totalMs || l.mins * 60000, true);
   } else if (l.phase === 'break') {
-    chrome.notifications.create('lockin-break-' + Date.now(), {
+    notify('lockin-break-' + Date.now(), {
       type: 'basic', iconUrl: 'icons/icon128.png', title: 'Break’s over', message: 'Ready for another focus session?'
     });
     await storeSet({ lockin: { phase: 'done', doneMins: l.doneMins || 0, doneAt: Date.now() } });
