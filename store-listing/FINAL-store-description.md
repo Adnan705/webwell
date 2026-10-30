@@ -187,7 +187,7 @@ WebWell is a free new tab extension (focus timer, music, site blocking, private 
 
 WebWell Plus is an optional paid upgrade. The seller is the developer (Adnan Khan). Payments are processed by Paddle (merchant of record) on https://webwell.app/plus, outside the extension. The extension has no payment code. A purchase emails a license key. The key is verified offline inside the extension (ECDSA P-256 signature checked with Web Crypto against a public key in lib/plus.js). No network request is made to unlock.
 
-How to test Plus: open the extension's dashboard (click the toolbar icon, then the dashboard link, or right-click the icon and choose Options), open the Plus tab, paste this test key into "Have a Plus key?" and press Activate: [TEST KEY]
+How to test Plus: open the extension's dashboard (click the toolbar icon, then the dashboard link, or right-click the icon and choose Options), click "Go Plus" at the bottom of the left bar, paste this test key into "Have a Plus key?" and press Unlock Plus: [TEST KEY]
 The Plus features then unlock (block schedules, strict focus, reports, sound mixer, extra themes). Removing the key on the same page locks them again.
 
 Permissions: only storage, activeTab, idle, alarms, offscreen, declarativeNetRequestWithHostAccess, scripting and search are required. tabs, webNavigation, favicon, notifications and host access (all sites, Google AI, SoundCloud, Spotify) are optional and requested only when the user turns the related feature on. No remote code. Source: https://github.com/Adnan705/webwell
@@ -199,7 +199,7 @@ Permissions: only storage, activeTab, idle, alarms, offscreen, declarativeNetReq
 
 ## F. Open items for the owner
 
-- Checkout status: https://webwell.app/plus currently says checkout is not open yet. Do not publish a listing that says Plus can be bought until the checkout works, or the reviewer and users will find nothing to buy. If you submit before it opens, remove the HOW PLUS IS SOLD section's present-tense purchase wording or open checkout first.
+- Checkout status: checkout on https://webwell.app/plus is open and tested with a real purchase, so the listing can say Plus can be bought.
 - [TEST KEY]: generate one with your key tool (no expiry or a long expiry) and replace the placeholder in the reviewer notes.
 - Data-usage form: decide whether to tick "Web history" (see D4).
 - Screenshots and promo tiles in E5 and E6 need to be made; none exist yet for Plus.
