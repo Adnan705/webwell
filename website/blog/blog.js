@@ -20,3 +20,9 @@
     });
   });
 })();
+
+// Every post gets the "Listen" bar (listen.js) without needing its own script tag.
+(function () {
+  if (!document.querySelector("article.doc .byline") || document.querySelector('script[src*="listen.js"]')) return;
+  var s = document.createElement("script"); s.src = "/blog/listen.js"; s.defer = true; document.body.appendChild(s);
+})();

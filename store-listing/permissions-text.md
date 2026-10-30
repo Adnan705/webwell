@@ -1,3 +1,5 @@
+> SUPERSEDED by store-listing/FINAL-store-description.md (version 1.9.0). Kept for history only. Do not paste from this file.
+
 # Paste at the TOP of the Chrome Web Store description (v1.8.2)
 
 YOUR PRIVACY, YOUR CHOICE
@@ -18,9 +20,9 @@ Privacy policy: webwell.app/privacy
 
 ---
 
-# Suggested "What's new" (1.8.2)
+# Suggested "What's new" (1.8.3)
 
-Your choice, up front. Installing now asks for nothing but the new tab page. A new welcome screen lets you decide whether WebWell may count your screen time and send alerts, with plain explanations. Blocking, music services and AI ask only when you use them. Watching a show or video no longer stops the time counting. Your data still never leaves your device.
+New: save any page to your new tab with the bookmark button in the popup, and see it in the dock. Music now moves on to the next saved song by itself when one ends. Also from 1.8.2: your choice, up front. Installing now asks for nothing but the new tab page. A new welcome screen lets you decide whether WebWell may count your screen time and send alerts, with plain explanations. Blocking, music services and AI ask only when you use them. Watching a show or video no longer stops the time counting. Your data still never leaves your device.
 
 ---
 

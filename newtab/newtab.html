@@ -9,7 +9,8 @@
 <script src="landmarks.js"></script>
 <script src="vector-bg.js"></script>
 <script src="boot.js"></script>
-<link rel="stylesheet" href="newtab.css?v=1.8.2">
+<link rel="stylesheet" href="newtab.css?v=1.9.0">
+<link rel="stylesheet" href="../lib/plus.css?v=1.9.0">
 </head>
 <body>
 
@@ -38,6 +39,9 @@
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".9" fill="currentColor"/></svg>
         <span>Focus</span>
       </button>
+      <button type="button" class="top-ic" id="lookBtn" title="Customise" aria-label="Customise this page" aria-expanded="false" aria-controls="lookPop">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.7 1.8-1.7h2.1A4.3 4.3 0 0 0 20.5 10C20.5 6.4 16.7 3.5 12 3.5z"/><circle cx="7.6" cy="11.2" r="1.1" fill="currentColor"/><circle cx="10.6" cy="7.4" r="1.1" fill="currentColor"/><circle cx="15.2" cy="7.6" r="1.1" fill="currentColor"/></svg>
+      </button>
       <a class="top-ic" href="#" id="dashLink" title="Dashboard" aria-label="Dashboard">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><rect x="5" y="11" width="3.4" height="6.5" rx="1"/><rect x="10.3" y="6.5" width="3.4" height="11" rx="1"/><rect x="15.6" y="9" width="3.4" height="8.5" rx="1"/></svg>
       </a>
@@ -46,6 +50,8 @@
       </a>
     </div>
   </header>
+  <!-- Customise: backgrounds, colours, accent, clock (themes.js) -->
+  <div class="look-pop hidden" id="lookPop" role="dialog" aria-labelledby="lookTitle"></div>
 
   <!-- Focus session: setup sheet -->
   <div class="lk-sheet hidden" id="lkSheet" role="dialog" aria-modal="true" aria-labelledby="lkSheetTitle">
@@ -152,7 +158,8 @@
     </div>
   </main>
 
-  <!-- Bottom-left: today's tasks (a small pill; opens on click) -->
+  <!-- Bottom-left: today's tasks and the focus garden (small pills; each opens on click) -->
+  <div class="bl-row">
   <aside class="tasks collapsed" id="tasksPanel">
     <button class="tasks-toggle" id="tasksToggle" aria-expanded="false" aria-controls="tasksBody">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/></svg>
@@ -166,6 +173,14 @@
       </div>
     </div>
   </aside>
+  <aside class="garden collapsed" id="gardenWidget">
+    <button type="button" class="tasks-toggle garden-toggle" id="gardenToggle" aria-expanded="false" aria-controls="gardenBody" aria-label="Focus garden">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20v-8"/><path d="M12 13c-4.5 0-6.5-2.6-6.5-6.5 4 0 6.5 2.2 6.5 6.5z"/><path d="M12 11c0-3.6 2.2-5.8 6.5-5.8 0 3.6-2.4 5.8-6.5 5.8z"/><path d="M7 20h10"/></svg>
+      <span class="g-lbl">Garden</span><span class="task-count" id="gardenCount"></span>
+    </button>
+    <div class="garden-body" id="gardenBody" role="region" aria-label="Focus garden"></div>
+  </aside>
+  </div>
 
   <!-- Bottom-centre: quote -->
   <div class="quote" id="quote"></div>
@@ -222,7 +237,15 @@
       </div>
       <div class="mc-body">
         <div class="music-pane" id="mtab-saved"><div class="mlist" id="savedList"></div></div>
-        <div class="music-pane hidden" id="mtab-ambient"><div class="mlist" id="ambientList"></div></div>
+        <div class="music-pane hidden" id="mtab-ambient"><div class="mlist" id="ambientList"></div>
+          <!-- WebWell Plus sound mixer (mixer.js) -->
+          <button type="button" class="mix-entry" id="mixEntry" aria-expanded="false" aria-controls="mixPanel">
+            <span class="mix-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M6 4v16M12 4v16M18 4v16"/><circle cx="6" cy="14" r="2.2" fill="currentColor"/><circle cx="12" cy="8" r="2.2" fill="currentColor"/><circle cx="18" cy="16" r="2.2" fill="currentColor"/></svg></span>
+            <span class="mt"><span class="mn">Mixer</span><span class="md" id="mixEntrySub">Layer sounds at your own levels</span></span>
+            <span id="mixEntryBadge"></span>
+          </button>
+          <div class="mix-panel hidden" id="mixPanel"></div>
+        </div>
         <div class="music-pane hidden" id="mtab-music">
           <div class="src-switch" id="srcSwitch" role="tablist" aria-label="Music source">
             <button class="src-btn on" data-src="spotify" role="tab">Spotify</button>
@@ -258,11 +281,15 @@
       </div>
     </div>
   </div>
-<script src="../lib/time.js?v=1.8.2"></script>
-<script src="../lib/spotify.js?v=1.8.2"></script>
-<script src="welcome.js?v=1.8.2"></script>
-<script src="newtab.js?v=1.8.2"></script>
-<script src="music.js?v=1.8.2"></script>
+<script src="../lib/time.js?v=1.9.0"></script>
+<script src="../lib/spotify.js?v=1.9.0"></script>
+<script src="../lib/plus.js?v=1.9.0"></script>
+<script src="welcome.js?v=1.9.0"></script>
+<script src="themes.js?v=1.9.0"></script>
+<script src="newtab.js?v=1.9.0"></script>
+<script src="music.js?v=1.9.0"></script>
+<script src="mixer.js?v=1.9.0"></script>
+<script src="garden.js?v=1.9.0"></script>
   <!-- One-time, optional review request (see review.js) -->
   <div class="review hidden" id="reviewCard" role="dialog" aria-label="Review WebWell">
     <b>Enjoying WebWell?</b>
@@ -272,7 +299,7 @@
       <button type="button" class="rv-ghost" id="reviewLater">Maybe later</button>
       <button type="button" class="rv-link" id="reviewNo">No thanks</button>
     </div>
-  </div><script src="lockin.js?v=1.8.2"></script>
-<script src="review.js?v=1.8.2"></script>
+  </div><script src="lockin.js?v=1.9.0"></script>
+<script src="review.js?v=1.9.0"></script>
 </body>
 </html>

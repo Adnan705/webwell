@@ -24,8 +24,32 @@
     { id: 'dots',      name: 'Dots' }
   ];
 
-  const pal = id => PALETTES.find(p => p.id === id) || PALETTES[0];
-  const styleOf = id => STYLES.find(s => s.id === id) || STYLES[0];
+  // WebWell Plus extras. Kept in their own lists so the free lists (and every picker that
+  // reads them, such as the dashboard and the welcome tour) stay exactly as they were.
+  const PLUS_PALETTES = [
+    { id: 'aurora', name: 'Aurora', sky: ['#03101b', '#0b2a3a', '#1b5a5e'], layers: ['#0f3b44', '#0c3039', '#09252d', '#061b22', '#041217'], sun: '#7dffc4', stars: true, plus: true },
+    { id: 'dune',   name: 'Dune',   sky: ['#2a1a2e', '#7a4a4a', '#e5a170'], layers: ['#c07a52', '#a5633f', '#874f33', '#683c29', '#4a2a1e'], sun: '#ffe2b0', stars: false, plus: true },
+    { id: 'lagoon', name: 'Lagoon', sky: ['#061a29', '#0e4a5c', '#3fb8a8'], layers: ['#1d8a86', '#167272', '#115c5e', '#0c4649', '#073236'], sun: '#d8fff3', stars: false, plus: true },
+    { id: 'plum',   name: 'Plum',   sky: ['#1a0d24', '#4a2160', '#b0629e'], layers: ['#7d3d86', '#673175', '#522661', '#3d1b4b', '#291235'], sun: '#ffd1ea', stars: true, plus: true },
+    { id: 'kraft',  name: 'Kraft',  sky: ['#2b2520', '#5a4a3c', '#a88b6c'], layers: ['#8a7058', '#745d48', '#5e4b3a', '#4a3a2d', '#352920'], sun: '#f3e3c8', stars: false, plus: true },
+    { id: 'frost',  name: 'Frost',  sky: ['#0e1624', '#2b3d55', '#8fb3d1'], layers: ['#4f6b8a', '#425b77', '#354a63', '#28394e', '#1b2839'], sun: '#eef6ff', stars: true, plus: true }
+  ];
+  const PLUS_STYLES = [
+    { id: 'aurora',   name: 'Aurora',   plus: true },
+    { id: 'dunes',    name: 'Dunes',    plus: true },
+    { id: 'topo',     name: 'Topography', plus: true },
+    { id: 'nebula',   name: 'Nebula',   plus: true },
+    { id: 'paper',    name: 'Paper',    plus: true },
+    { id: 'softgrad', name: 'Soft gradient', plus: true }
+  ];
+  const ALL_PALETTES = PALETTES.concat(PLUS_PALETTES), ALL_STYLES = STYLES.concat(PLUS_STYLES);
+  const isPlusStyle = id => PLUS_STYLES.some(s => s.id === id);
+  const isPlusPal = id => PLUS_PALETTES.some(p => p.id === id);
+
+  // Lookups know every id (free and Plus) so a saved Plus choice always draws correctly;
+  // deciding whether it may be SHOWN is the new tab's job (themes.js).
+  const pal = id => ALL_PALETTES.find(p => p.id === id) || PALETTES[0];
+  const styleOf = id => ALL_STYLES.find(s => s.id === id) || STYLES[0];
   const base = id => pal(id).sky[1];
 
   // small deterministic random + smooth 1D noise, so a given style/palette always looks the same
@@ -113,6 +137,104 @@
       s += `<rect width="${W}" height="${H}" fill="url(#sky)"/><circle cx="${f(cx)}" cy="${f(cy)}" r="760" fill="url(#glow)"/><rect width="${W}" height="${H}" fill="url(#dg)" opacity=".85" mask="url(#m)"/>`;
       s += `<circle cx="${f(cx)}" cy="${f(cy)}" r="120" fill="${p.sun}" opacity=".16"/><circle cx="${f(cx)}" cy="${f(cy)}" r="64" fill="${p.sun}" opacity=".3"/>`;
       return s;
+    },
+
+    // ----- Plus styles -----
+    // Soft curtains of light over a dark ridge. Each curtain is a wavy band with a
+    // vertical fade, so no blur filter is needed (filters are slow to repaint at 4K).
+    aurora(p, r) {
+      const cols = [p.sun, p.sky[2], p.layers[0], p.sun];
+      let defs = skyDefs(p, 'sky');
+      cols.forEach((c, i) => { defs += `<linearGradient id="au${i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity="0"/><stop offset=".35" stop-color="${c}" stop-opacity="${f(0.3 + r() * 0.16)}"/><stop offset=".7" stop-color="${c}" stop-opacity="${f(0.12 + r() * 0.08)}"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient>`; });
+      let s = `<defs>${defs}</defs><rect width="${W}" height="${H}" fill="url(#sky)"/>${stars(Object.assign({}, p, { stars: true }), r)}`;
+      for (let i = 0; i < 4; i++) {
+        const nz = noise1(r), top = 120 + i * 70 + r() * 60, depth = 260 + r() * 160, ph = r() * 30;
+        let d = '', back = '';
+        for (let x = -40; x <= W + 40; x += 40) {
+          const y = top + (nz(ph + x / 260) - 0.5) * 260 + Math.sin(x / 300 + i) * 40;
+          d += (d ? ' L' : 'M') + x + ' ' + f(y);
+          back = ` L${x} ${f(y + depth + (nz(ph + 9 + x / 180) - 0.5) * 120)}` + back;
+        }
+        s += `<path d="${d}${back} Z" fill="url(#au${i})"/>`;
+      }
+      s += ridge(r, 0, 900, 120, 380, false, p.layers[3]) + ridge(r, 0, 980, 80, 240, true, p.layers[4]);
+      return s;
+    },
+    // Smooth sand ridges with a lit crest line, low sun.
+    dunes(p, r) {
+      const sx = 300 + r() * 1300, sy = 380 + r() * 60;
+      let s = `<defs>${skyDefs(p, 'sky')}${glow(p, sx, sy, 560, 0.75)}</defs><rect width="${W}" height="${H}" fill="url(#sky)"/>`;
+      s += `<circle cx="${f(sx)}" cy="${f(sy)}" r="560" fill="url(#glow)"/><circle cx="${f(sx)}" cy="${f(sy)}" r="78" fill="${p.sun}" opacity=".9"/>`;
+      p.layers.forEach((c, i) => {
+        const nz = noise1(r), y0 = 560 + i * 100, amp = 120 - i * 10, ph = r() * 40;
+        let d = `M0 ${H} L0 ${f(y0)}`, crest = '';
+        for (let x = 0; x <= W + 24; x += 24) {
+          const v = nz(ph + x / (700 - i * 60)), y = y0 - Math.pow(v, 1.6) * amp;
+          d += ` L${x} ${f(y)}`; crest += (crest ? ' L' : 'M') + x + ' ' + f(y);
+        }
+        s += `<path d="${d} L${W + 24} ${H} Z" fill="${c}"/><path d="${crest}" fill="none" stroke="${p.sun}" stroke-opacity="${f(0.22 - i * 0.03)}" stroke-width="2"/>`;
+      });
+      return s;
+    },
+    // A quiet map: thin contour rings around a few peaks on a flat ground.
+    topo(p, r) {
+      let s = `<defs>${skyDefs(p, 'sky')}</defs><rect width="${W}" height="${H}" fill="url(#sky)"/>`;
+      for (let c = 0; c < 4; c++) {
+        const cx = r() * W, cy = r() * H, nz = noise1(r), rings = 7 + Math.floor(r() * 6), sc = 0.7 + r() * 0.6;
+        for (let k = 1; k <= rings; k++) {
+          const rad = k * 46 * sc; let d = '';
+          for (let a = 0; a <= 72; a++) {
+            const t = a / 72 * 6.2832, wob = 1 + (nz(Math.cos(t) * 1.8 + 5 + k * 0.11) - 0.5) * 0.55;
+            d += (a ? ' L' : 'M') + f(cx + Math.cos(t) * rad * 1.3 * wob) + ' ' + f(cy + Math.sin(t) * rad * wob);
+          }
+          s += `<path d="${d} Z" fill="none" stroke="${k % 5 === 0 ? p.sun : p.layers[0]}" stroke-opacity="${k % 5 === 0 ? 0.34 : 0.3}" stroke-width="${k % 5 === 0 ? 2 : 1.2}"/>`;
+        }
+      }
+      return s;
+    },
+    // Deep space: soft coloured clouds, lots of small stars and a few bright ones.
+    nebula(p, r) {
+      const cols = [p.sun, p.sky[2], p.layers[0], p.layers[1], p.sky[2]];
+      let defs = `<linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${p.sky[0]}"/><stop offset="1" stop-color="${p.layers[4]}"/></linearGradient>`;
+      const clouds = [];
+      for (let i = 0; i < 7; i++) {
+        const cx = f(200 + r() * 1520), cy = f(150 + r() * 780), rad = f(220 + r() * 380), c = cols[i % cols.length];
+        clouds.push([cx, cy, rad]);
+        defs += `<radialGradient id="n${i}" cx="${cx}" cy="${cy}" r="${rad}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c}" stop-opacity="${f(0.42 + r() * 0.25)}"/><stop offset=".6" stop-color="${c}" stop-opacity="${f(0.12 + r() * 0.1)}"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></radialGradient>`;
+      }
+      let s = `<defs>${defs}</defs><rect width="${W}" height="${H}" fill="url(#sky)"/>`;
+      clouds.forEach((o, i) => { s += `<ellipse cx="${o[0]}" cy="${o[1]}" rx="${f(o[2] * 1.4)}" ry="${o[2]}" fill="url(#n${i})" transform="rotate(${f(r() * 60 - 30)} ${o[0]} ${o[1]})"/>`; });
+      for (let i = 0; i < 160; i++) s += `<circle cx="${f(r() * W)}" cy="${f(r() * H)}" r="${f(0.5 + r() * 1.3)}" fill="#fff" opacity="${f(0.2 + r() * 0.6)}"/>`;
+      for (let i = 0; i < 5; i++) { const x = f(r() * W), y = f(r() * H); s += `<circle cx="${x}" cy="${y}" r="9" fill="${p.sun}" opacity=".12"/><circle cx="${x}" cy="${y}" r="2.4" fill="#fff" opacity=".95"/>`; }
+      return s;
+    },
+    // Layered paper cut-outs with a soft shadow under each sheet and a fine grain.
+    paper(p, r) {
+      let grain = '';
+      for (let i = 0; i < 46; i++) grain += `<circle cx="${f(r() * 64)}" cy="${f(r() * 64)}" r="${f(0.4 + r() * 0.7)}" fill="${r() > 0.5 ? '#fff' : '#000'}" opacity="${f(0.05 + r() * 0.08)}"/>`;
+      const sx = 400 + r() * 1100, sy = 300 + r() * 120;
+      let s = `<defs>${skyDefs(p, 'sky')}<pattern id="pg" width="64" height="64" patternUnits="userSpaceOnUse">${grain}</pattern></defs><rect width="${W}" height="${H}" fill="url(#sky)"/>`;
+      s += `<circle cx="${f(sx)}" cy="${f(sy + 6)}" r="96" fill="#000" opacity=".18"/><circle cx="${f(sx)}" cy="${f(sy)}" r="96" fill="${p.sun}" opacity=".85"/>`;
+      p.layers.forEach((c, i) => {
+        const y = 560 + i * 98, a1 = 60 + i * 6, l1 = 1300 - i * 120, ph = r() * 6.28, nz = noise1(r);
+        let d = `M0 ${H} L0 ${f(y)}`;
+        for (let x = 0; x <= W + 20; x += 20) d += ` L${x} ${f(y + Math.sin(x / l1 * 6.28 + ph) * a1 + (nz(x / 90) - 0.5) * 10)}`;
+        d += ` L${W + 20} ${H} Z`;
+        s += `<path d="${d}" fill="#000" opacity=".22" transform="translate(0 -9)"/><path d="${d}" fill="${c}"/>`;
+      });
+      s += `<rect width="${W}" height="${H}" fill="url(#pg)"/>`;
+      return s;
+    },
+    // Nothing but colour: a few very large, soft washes.
+    softgrad(p, r) {
+      const cols = [p.sun, p.sky[2], p.layers[0], p.layers[2]];
+      let defs = skyDefs(p, 'sky'), s = '';
+      cols.forEach((c, i) => {
+        const cx = f(r() * W), cy = f(r() * H), rad = f(700 + r() * 500);
+        defs += `<radialGradient id="g${i}" cx="${cx}" cy="${cy}" r="${rad}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${c}" stop-opacity="${i === 0 ? 0.45 : 0.6}"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></radialGradient>`;
+        s += `<rect width="${W}" height="${H}" fill="url(#g${i})"/>`;
+      });
+      return `<defs>${defs}</defs><rect width="${W}" height="${H}" fill="url(#sky)"/>` + s;
     }
   };
 
@@ -122,11 +244,13 @@
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice">${DRAW[st.id](p, r)}</svg>`;
   }
   const dataUri = (styleId, palId, seed) => 'data:image/svg+xml;utf8,' + encodeURIComponent(svg(styleId, palId, seed));
-  const pick = (cur) => {
+  // `withPlus` lets the shuffle button include the Plus set for Plus users; free users only ever get free ones.
+  const pick = (cur, withPlus) => {
+    const ss = withPlus ? ALL_STYLES : STYLES, ps = withPlus ? ALL_PALETTES : PALETTES;
     let s, p;
-    do { s = STYLES[Math.floor(Math.random() * STYLES.length)].id; p = PALETTES[Math.floor(Math.random() * PALETTES.length)].id; } while (cur && s === cur.style && p === cur.pal);
+    do { s = ss[Math.floor(Math.random() * ss.length)].id; p = ps[Math.floor(Math.random() * ps.length)].id; } while (cur && s === cur.style && p === cur.pal);
     return { style: s, pal: p };
   };
 
-  root.WW_VBG = { W, H, PALETTES, STYLES, pal, styleOf, base, svg, dataUri, pick };
+  root.WW_VBG = { W, H, PALETTES, STYLES, PLUS_PALETTES, PLUS_STYLES, isPlusStyle, isPlusPal, pal, styleOf, base, svg, dataUri, pick };
 })(typeof window !== 'undefined' ? window : globalThis);

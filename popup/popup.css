@@ -186,3 +186,43 @@ select.sel:focus{border-color:var(--acc)}
   font-size:12px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+
+/* save this page to the new tab */
+.save-btn[hidden]{display:none}
+.save-btn{color:var(--mut)}
+.save-btn.on{color:var(--acc);background:var(--acc-soft)}
+
+/* WebWell Plus: focus presets, strict mode and its emergency exit (Focus tab) */
+.presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.preset{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:10px 11px;border-radius:14px;
+  border:1.5px solid var(--line);background:var(--card);cursor:pointer;text-align:left;transition:border-color .15s,background .15s,transform .12s}
+.preset:hover{border-color:var(--acc);background:var(--acc-soft)}
+.preset:active{transform:scale(.97)}
+.preset b{font-size:12.5px;font-weight:700;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preset small{font-size:10.5px;color:var(--mut);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pre-sep{height:1px;background:var(--line);margin:14px 0 2px}
+.toggle-row .t .plus-badge{margin-left:4px;font-size:9px;padding:3px 6px;vertical-align:1px}
+.sm-btn{height:30px;padding:0 12px;font-size:12px}
+.lock-in{margin-top:10px}
+.lock-in[hidden]{display:none}
+.view>.plus-lock{flex:none}
+.em-link{display:block;margin:12px auto 0;font-size:12px;color:var(--mut);text-decoration:underline;text-underline-offset:3px}
+.em-link:hover{color:var(--ink)}
+.em-box{margin-top:10px;padding:12px;border-radius:14px;background:var(--bg);font-size:12px}
+.em-box[hidden]{display:none}
+.em-box label{color:var(--mut);line-height:1.5}
+.em-box label b{color:var(--ink)}
+.em-box .row{margin-top:8px}
+.em-box .btn:disabled{opacity:.45;cursor:default}
+.em-d{margin-top:8px;color:var(--mut);font-size:11px}
+
+/* "Go Plus" strip at the bottom of the popup (hidden once Plus is on) */
+.goplus{display:flex;align-items:center;gap:11px;width:100%;margin:0 0 12px;padding:10px 12px;border-radius:14px;cursor:pointer;text-align:left;
+  color:var(--acc-deep);background:linear-gradient(135deg,var(--acc-soft),transparent 140%),var(--card);border:1px solid rgba(232,96,76,.30);transition:border-color .15s,box-shadow .15s}
+.goplus[hidden]{display:none}
+.goplus:hover{border-color:rgba(232,96,76,.55);box-shadow:0 6px 16px rgba(232,96,76,.14)}
+.goplus > svg:first-child{width:22px;height:22px;flex:none}
+.goplus .gp-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;line-height:1.2}
+.goplus .gp-t b{font-size:13px;font-weight:700}
+.goplus .gp-t small{font-size:11.5px;font-weight:500;color:var(--mut)}
+.goplus .gp-go{width:16px;height:16px;flex:none;opacity:.7}

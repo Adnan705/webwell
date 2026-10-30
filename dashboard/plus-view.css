@@ -1,0 +1,33 @@
+/* WebWell Plus page (dashboard) */
+.pl-wrap{max-width:760px;margin:0 auto;padding:8px 4px 40px;display:grid;gap:16px}
+.pl-title{font-size:26px;letter-spacing:-.02em;margin:6px 0 2px}
+.pl-status{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:16px;background:var(--card,#fff);border:1px solid var(--line,#ececf0)}
+.pl-status.on{border-color:rgba(26,158,107,.4);background:rgba(26,158,107,.06)}
+.pl-status > div{flex:1;min-width:0}
+.pl-status strong{display:block;font-size:15px}
+.pl-status p{margin:3px 0 0;font-size:13px;line-height:1.55;opacity:.75}
+.pl-key h3,.pl-wrap h3{margin:0 0 6px}
+.pl-hint{margin:0 0 12px;font-size:13px;opacity:.7}
+.pl-row{display:flex;gap:10px;flex-wrap:wrap}
+.pl-row .txt-in{flex:1;min-width:220px}
+.pl-msg{min-height:1.2em;margin:10px 0 0;font-size:13px}
+.pl-msg.bad{color:#e0523d}
+.pl-list{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:14px}
+.pl-list li{display:flex;gap:12px;align-items:flex-start}
+.pl-list strong{font-size:14px}
+.pl-list p{margin:2px 0 0;font-size:12.5px;line-height:1.55;opacity:.7}
+.pl-check{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:rgba(239,106,82,.14);color:#e0523d}
+.pl-check.on{background:rgba(26,158,107,.16);color:#1a9e6b}
+.pl-lic{opacity:1!important;font-size:13.5px}
+.pl-lic b{font-weight:700}
+
+/* "Go Plus" button at the bottom of the left rail */
+.railnav .nav.go-plus{width:62px;height:auto;min-height:62px;padding:9px 4px 8px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  color:var(--acc-deep,#cf4c38);background:linear-gradient(165deg,var(--acc-soft,#fdeee8),rgba(255,255,255,0) 130%);border:1px solid rgba(232,96,76,.30);margin-top:4px}
+.railnav .nav.go-plus svg{width:22px;height:22px}
+.railnav .nav.go-plus .gp-label{font:700 10px/1 "Inter",system-ui,sans-serif;letter-spacing:.03em;white-space:nowrap}
+.railnav .nav.go-plus:hover{background:var(--acc-soft,#fdeee8);border-color:rgba(232,96,76,.55);color:var(--acc-deep,#cf4c38);box-shadow:0 6px 16px rgba(232,96,76,.16)}
+.railnav .nav.go-plus.active{background:var(--acc,#e8604c);border-color:var(--acc,#e8604c);color:#fff;box-shadow:0 6px 16px rgba(232,96,76,.32)}
+.railnav .nav.go-plus.is-plus{background:var(--hover,#f2f2f5);border-color:var(--line,#ececf0);color:var(--ink,#16161a)}
+.railnav .nav.go-plus.is-plus.active{background:var(--ink,#16161a);border-color:var(--ink,#16161a);color:#fff}
+@media (max-height:640px){.railnav .nav.go-plus .gp-label{display:none}.railnav .nav.go-plus{min-height:52px;width:52px;padding:0}}

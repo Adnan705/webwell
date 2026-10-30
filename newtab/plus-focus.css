@@ -1,0 +1,53 @@
+/* WebWell Plus on the new tab: focus presets and strict mode in the focus sheet, and the strict
+   session's emergency exit. Loaded by newtab/lockin.js. Same glass look as the focus sheet. */
+.lk-card { max-height: calc(100vh - 40px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .22) transparent; color-scheme: dark; }
+.lk-plus-label { display: flex; align-items: center; gap: 8px; margin-top: 0; }
+.lk-plus-label .plus-badge { letter-spacing: .06em; }
+.lk-plus-edit {
+  margin-left: auto; border: 0; background: none; padding: 2px 0; cursor: pointer;
+  color: var(--ink-dim); font: inherit; font-size: 11.5px; letter-spacing: .04em; text-transform: none;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.lk-plus-edit:hover { color: var(--ink); }
+#lkPlusTop + .lk-label { margin-top: 18px; }
+.lk-presets button { height: auto; min-height: 46px; padding: 7px 16px; display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 1px; }
+.lk-presets b { font-size: 13px; font-weight: 600; color: var(--ink); }
+.lk-presets small { font-size: 11px; font-weight: 500; color: var(--ink-faint); }
+.lk-presets button:hover { background: rgba(239, 106, 82, .22); border-color: rgba(239, 106, 82, .6); }
+.lk-presets.is-preview button { opacity: .6; }
+.lk-presets.is-preview button:hover { opacity: .85; background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .3); }
+.lk-plus-note { margin-top: 12px; }
+.lk-plus-note .plus-lock { color: var(--ink); border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .05); }
+.lk-plus-row {
+  display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 14px; padding: 0; border: 0; background: none;
+  font: inherit; font-size: 14px; color: var(--ink-faint); cursor: pointer; text-align: left;
+}
+.lk-plus-row .tk { position: relative; flex: none; width: 42px; height: 24px; border-radius: 99px; background: rgba(255, 255, 255, .1); }
+.lk-plus-row .tk::before { content: ""; position: absolute; left: 3px; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgba(255, 255, 255, .45); }
+.lk-plus-row:hover { color: var(--ink-dim); }
+.lk-plus-row .plus-badge { margin-left: auto; }
+#lkStrictRow .lk-toggle { margin-top: 14px; }
+.lk-sheet :focus-visible, .lk-em :focus-visible { outline: 2px solid rgba(255, 255, 255, .8); outline-offset: 3px; }
+
+/* strict session: no Pause/End; a quiet emergency exit instead */
+.lk-em { margin-top: 18px; display: flex; flex-direction: column; align-items: center; }
+.lk-em.hidden, .lk-em-box.hidden { display: none; }
+.lk-em-link {
+  border: 0; background: none; cursor: pointer; padding: 4px 6px; font: inherit; font-size: 12.5px;
+  color: var(--ink-faint); text-decoration: underline; text-underline-offset: 3px; text-shadow: 0 1px 10px rgba(0, 0, 0, .5);
+}
+.lk-em-link:hover { color: var(--ink-dim); }
+.lk-em-box {
+  margin-top: 10px; width: min(380px, 86vw); padding: 16px; border-radius: 18px; text-align: left;
+  background: rgba(22, 22, 32, .7); border: 1px solid var(--glass-border); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.lk-em-box label { font-size: 13px; color: var(--ink-dim); line-height: 1.5; }
+.lk-em-box label b { color: var(--ink); font-weight: 600; }
+.lk-em-row { display: flex; gap: 8px; margin-top: 10px; }
+.lk-em-row .lk-input { height: 42px; flex: 1; min-width: 0; }
+.lk-em-row button {
+  height: 42px; padding: 0 18px; border-radius: 999px; border: 0; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 700;
+  background: #ef6a52; color: #fff;
+}
+.lk-em-row button:disabled { opacity: .4; cursor: default; }
+.lk-em-box p { margin-top: 8px; font-size: 11.5px; color: var(--ink-faint); }

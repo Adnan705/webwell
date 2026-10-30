@@ -75,3 +75,20 @@ h1 { margin-top: 10px; font-size: clamp(24px, 4vw, 30px); font-weight: 700; lett
 }
 @keyframes breathe { 0%, 100% { transform: scale(.55); opacity: .7; } 50% { transform: scale(1.6); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .breath span, .card { animation: none; } }
+
+/* WebWell Plus: intent question, earned-break note, and the locked card for free users */
+.plus-slot { margin-top: 22px; }
+.intent { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.intent-l { font-size: 13px; font-weight: 600; color: var(--ink); }
+.intent-in {
+  height: 46px; padding: 0 16px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255, 255, 255, .07);
+  color: var(--ink); font-family: inherit; font-size: 14.5px; outline: none; transition: border-color .15s;
+}
+.intent-in::placeholder { color: var(--ink-3); }
+.intent-in:focus { border-color: rgba(255, 255, 255, .5); }
+.intent-h { font-size: 12px; color: var(--ink-3); }
+.intent .btn { margin-top: 6px; width: 100%; }
+.earn-note { margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.lock-slot { margin-top: 26px; }
+.lock-slot .plus-lock { text-align: left; color: var(--ink); border-color: rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .05); }
+.lock-slot .plus-btn:focus-visible, .lock-slot .plus-link:focus-visible { outline: 2px solid rgba(255, 255, 255, .8); outline-offset: 3px; }

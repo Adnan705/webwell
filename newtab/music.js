@@ -133,6 +133,11 @@ async function playItem(item) {
     else scStatus('Allow access to ' + name + ' to play and search. Press play again and choose Allow.');
     return;
   }
+  // A Plus mix comes back as a mix; without Plus (or before the mixer loads) it falls back to Rain.
+  if (item.kind === 'mix') {
+    if (window.WWMixer && window.WWMixer.play()) return;
+    item = ambientItem(AMBIENT_SOUNDS[0]);
+  }
   musicState.last = item;
   if (item.kind === 'radio') { musicState.station = item.idx; musicState.tab = 'radio'; send({ cmd: 'play-station', idx: item.idx }); }
   else if (item.kind === 'ambient') { musicState.ambient = item.sound; send({ cmd: 'ambient-play', kind: item.sound }); }
@@ -168,6 +173,11 @@ function toggleCurrent() {
     return;
   }
   const tab = uiState.tab;
+  // A paused mix resumes with the levels shown in the mixer (the player may have been recreated since).
+  if (tab === 'ambient' && uiState.kind === 'mix' && !uiState.playing && window.WWMixer) {
+    if (!window.WWMixer.play()) playItem(ambientItem(AMBIENT_SOUNDS[0]));   // no Plus: plain Rain instead
+    return;
+  }
   const payload = { cmd: TOGGLE_CMD[tab] || 'radio-toggle' };
   if (tab === 'radio') payload.idx = /^radio:(\d+)/.test(uiState.key) ? +RegExp.$1 : (musicState.station || 0);
   if (tab === 'ambient') payload.kind = uiState.kind || musicState.ambient || 'rain';
@@ -285,7 +295,7 @@ function renderSuggested() {
     box.append(rowEl({ art: m.art, name: m.title || s.name, desc: 'Playlist', active: isActive(it.id), item: it, onPlay: () => playItem(it) }));
   });
 }
-function renderAll() { renderNow(); renderSaved(); renderAmbient(); renderScResults(); renderSuggested(); }
+function renderAll() { renderNow(); renderSaved(); renderAmbient(); renderScResults(); renderSuggested(); if (window.WWMixer) window.WWMixer.sync(); }
 
 /* ---------------- SoundCloud search ---------------- */
 // Uses SoundCloud's public track-search endpoint. The client_id is extracted from
@@ -464,7 +474,8 @@ async function initMusic() {
   $m('cardHeart').addEventListener('click', () => toggleFav(currentItem()));
   document.querySelectorAll('.music-tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.mtab)));
   document.addEventListener('click', e => {
-    if (!$m('musicCard').classList.contains('hidden') && !e.target.closest('#musicWidget')) setCardOpen(false);
+    // isConnected: a button that re-rendered itself (the mixer does this) is no longer inside the card, but was clicked there
+    if (!$m('musicCard').classList.contains('hidden') && e.target.isConnected && !e.target.closest('#musicWidget')) setCardOpen(false);
   });
 
   $m('spGo').addEventListener('click', runSpotifyInput);

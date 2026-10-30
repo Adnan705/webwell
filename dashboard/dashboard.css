@@ -590,3 +590,53 @@ body.dark .railnav .nav.active{background:var(--acc);color:#fff;box-shadow:0 6px
 .vec-pal{width:34px;height:34px;border-radius:50%;border:3px solid var(--card);outline:2px solid var(--line);cursor:pointer;padding:0;transition:transform .2s}
 .vec-pal:hover{transform:scale(1.1)}
 .vec-pal.on{outline:2px solid var(--acc)}
+
+
+/* ============ WebWell Plus: focus extras in the Protect view (dashboard/protect-view.js) ============ */
+.pf-sec{margin-top:30px}
+.pf-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pf-head h2{font-size:18px;font-weight:800;letter-spacing:-.4px}
+.pf-head .sub-mut{flex-basis:100%;font-size:12.5px}
+.pf-locks .plus-lock{background:var(--card);border-color:rgba(224,82,61,.35)}
+.pf-wide{grid-column:1/-1}
+.pf-list{display:flex;flex-direction:column}
+.pf-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.pf-list>.pf-row:first-child{border-top:0}
+.pf-row.off .pf-main{opacity:.55}
+.pf-main{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.pf-main b{font-size:13.5px}
+.pf-main .sub-mut{flex-basis:100%;line-height:1.5}
+.pf-now,.pf-tag{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--good-soft);color:var(--good)}
+.pf-tag{background:var(--acc-soft);color:var(--acc-deep)}
+body.dark .pf-tag{color:var(--acc)}
+.pf-x{width:30px;height:30px;flex:none;border-radius:50%;border:0;background:transparent;color:var(--mut);cursor:pointer;font-size:12px}
+.pf-x:hover{background:var(--hover);color:var(--ink)}
+.pf-empty{padding:6px 0}
+.pf-perm{margin-top:0}
+.pill.pf-idle{background:var(--hover);color:var(--mut)}
+.pf-strict-now{padding:12px 14px;border-radius:14px;background:var(--acc-soft);font-size:12.5px;line-height:1.55;font-weight:600}
+.pf-intents{display:flex;flex-direction:column;gap:8px}
+.pf-intent{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:var(--bg)}
+.pf-intent div{min-width:0;display:flex;flex-direction:column;gap:2px}
+.pf-intent b{font-size:12.5px}
+.pf-intent span{font-size:12.5px;color:var(--mut);overflow-wrap:anywhere}
+.pf-intent small{flex:none;font-size:11px;color:var(--faint);white-space:nowrap}
+.pf-foot-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.pf-link{border:0;background:none;padding:2px 0;color:var(--acc-deep);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+body.dark .pf-link{color:var(--acc)}
+.toggle input:focus-visible+.tk{outline:2px solid var(--acc);outline-offset:2px}
+.btn:disabled{opacity:.5;cursor:default}
+/* dialogs */
+.pf-dialog{width:min(480px,94vw)}
+.pf-l{display:block;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:14px 0 6px}
+.pf-in{width:100%;min-width:0}
+textarea.pf-in{resize:vertical;margin-top:8px;line-height:1.5}
+.pf-days{display:flex;flex-wrap:wrap;gap:6px}
+.pf-day{min-width:48px;height:34px;padding:0 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);color:var(--mut);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.pf-day:hover{color:var(--ink);border-color:var(--faint)}
+.pf-day.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.pf-times{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pf-hint{min-height:16px;margin-top:6px;font-size:12px;color:var(--mut)}
+.pf-radio,.pf-check{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-top:8px;border-radius:12px;background:var(--bg);font-size:13px;font-weight:600;cursor:pointer}
+.pf-radio input,.pf-check input{margin-top:2px;width:16px;height:16px;flex:none;accent-color:var(--acc)}
+.pf-radio small,.pf-check small{display:block;margin-top:2px;font-size:11.5px;font-weight:500;color:var(--mut);line-height:1.45}

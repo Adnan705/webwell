@@ -18,6 +18,7 @@ async function boot({ storage = {}, offscreenUI = null, oembed = {}, scDown = fa
   const w = dom.window, store = JSON.parse(JSON.stringify(storage)), sent = [], fetched = [];
   let uiListener = null;
   w.chrome = {
+    permissions: { contains: () => Promise.resolve(true), request: () => Promise.resolve(true) },
     runtime: { getURL: p => 'chrome-extension://x/' + p,
       sendMessage: m => { if (m && m.type === 'ww-ensure-player') return Promise.resolve({ ok: true }); sent.push(m); return Promise.resolve(m && m.cmd === 'get-state' && offscreenUI ? { ui: offscreenUI, station: 0 } : { ok: true }); },
       onMessage: { addListener: f => { uiListener = f; } } },

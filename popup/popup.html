@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WebWell</title>
-<link rel="stylesheet" href="popup.css?v=1.8.2">
+<link rel="stylesheet" href="popup.css?v=1.9.0">
+<link rel="stylesheet" href="../lib/plus.css?v=1.9.0">
 </head>
 <body>
   <div class="pop">
@@ -14,6 +15,7 @@
         <div class="brand-t"><strong>WebWell</strong><small id="dateLine"></small></div>
       </div>
       <div class="top-actions">
+        <button class="ico-btn save-btn" id="saveTab" hidden></button>
         <button class="pill" id="trackPill" title="Pause or resume tracking"></button>
         <button class="ico-btn" id="openDash" title="Open dashboard" aria-label="Open dashboard"></button>
       </div>
@@ -36,12 +38,19 @@
     </div>
 
     <main class="view" id="view" aria-live="polite"></main>
+    <button class="goplus" id="goPlus" type="button" hidden aria-label="See what WebWell Plus adds">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10l3.5 5L12 20.5 3.5 9z"/><path d="M3.5 9h17M9.5 4L8 9l4 11.5L16 9l-1.5-5"/></svg>
+      <span class="gp-t"><b>Go Plus</b><small>See what you can unlock</small></span>
+      <svg class="gp-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
     <div class="toast" id="toast" role="status"></div>
   </div>
 
-  <script src="../lib/time.js?v=1.8.2"></script>
-  <script src="../lib/categories.js?v=1.8.2"></script>
-  <script src="../lib/protect.js?v=1.8.2"></script>
-  <script src="popup.js?v=1.8.2"></script>
+  <script src="../lib/time.js?v=1.9.0"></script>
+  <script src="../lib/categories.js?v=1.9.0"></script>
+  <script src="../lib/protect.js?v=1.9.0"></script>
+<script src="../lib/plus.js?v=1.9.0"></script>
+  <script src="../lib/plus-focus.js?v=1.9.0"></script>
+  <script src="popup.js?v=1.9.0"></script>
 </body>
 </html>

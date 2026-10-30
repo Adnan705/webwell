@@ -10,7 +10,13 @@
   var mode = b.bgMode === 'gradient' ? 'gradient' : b.bgMode === 'vector' && window.WW_VBG ? 'vector' : 'photos';
   de.setAttribute('data-theme', b.theme || 'dusk');
   de.setAttribute('data-bgmode', mode);
-  if (mode === 'vector') de.style.backgroundColor = window.WW_VBG.base(b.vecPal);
+  // A saved Plus palette only paints while Plus was on last time (newtab.js re-checks it right after).
+  var V = window.WW_VBG;
+  var pal = b.vecPal;
+  if (V && V.isPlusPal && V.isPlusPal(pal) && !b.plusOn) pal = 'dawn';
+  if (mode === 'vector') de.style.backgroundColor = V.base(pal);
+  // Plus accent and clock style, set before first paint so the clock does not jump.
+  if (b.plusOn && b.clockStyle && b.clockStyle !== 'classic') de.setAttribute('data-clock', b.clockStyle);
 
   // Start fetching today's photo right now (before CSS/JS are even parsed).
   var L = window.WW_LANDMARKS || [];

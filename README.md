@@ -15,10 +15,12 @@
   <a href="https://webwell.app"><b>webwell.app</b></a>
   &nbsp;·&nbsp;
   <a href="https://webwell.app/blog">Blog</a>
+  &nbsp;·&nbsp;
+  <a href="https://webwell.app/plus">WebWell Plus</a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.8.2-coral" alt="version">
+  <img src="https://img.shields.io/badge/version-1.9.0-coral" alt="version">
   <img src="https://img.shields.io/badge/privacy-100%25%20local-brightgreen" alt="privacy">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="license">
   <img src="https://img.shields.io/badge/browser-Brave%20%7C%20Chrome-orange" alt="browser">
@@ -47,18 +49,34 @@
 
 ## ✨ Features
 
-- ⏱️ **Automatic time tracking** — active-tab time per website (pauses when you're idle or the window loses focus)
-- 📊 **Command dashboard** — productivity score, time split, streaks, trends, 24-hour rhythm, category breakdowns
-- 💬 **Ask WebWell (AI)** — chat with your stats: *"when am I most distracted?"* (needs a free Gemini key — 2-minute setup in Settings)
-- 🔮 **Distraction forecast** — learns your slump hours and warns you 15 minutes before
-- 🖼️ **Momentum-style new tab** — landmark photos with facts, a daily focus you can start a session from, tasks, greeting, web search
-- 🎧 **Music on your new tab** — a compact player with lofi radio, offline rain/noise/wave sounds, Spotify and SoundCloud; tap the ♥ to save a song and it's one click away on every new tab
-- ⏳ **Focus sessions** — a full-screen focus timer with offline rain/noise/wave sounds or lofi radio; distracting sites are blocked until you're done
-- 🛡️ **Protect** — adult-content filter (95,000+ domains, SafeSearch, YouTube Restricted Mode), short-video blocker (Shorts, Reels, TikTok), always-blocked sites, mindful pause, parent PIN
-- 🎯 **Site limits & nudges** — daily limits per site, gentle check-ins
-- 🧾 **Shareable week cards** — download a beautiful image of your week for social media
-- 👤 **Local profile** — your name, picture, and themes; your data stays yours
+- ⏱️ **Automatic time tracking**: active-tab time per website (pauses when you're idle or the window loses focus)
+- 📊 **Command dashboard**: productivity score, time split, streaks, trends, 24-hour rhythm, category breakdowns
+- 💬 **Ask WebWell (AI)**: chat with your stats: *"when am I most distracted?"* (needs a free Gemini key, 2-minute setup in Settings)
+- 🔮 **Distraction forecast**: learns your slump hours and warns you 15 minutes before
+- 🖼️ **Momentum-style new tab**: landmark photos with facts, a daily focus you can start a session from, tasks, greeting, web search
+- 🎧 **Music on your new tab**: a compact player with lofi radio, offline rain/noise/wave sounds, Spotify and SoundCloud; tap the ♥ to save a song and it's one click away on every new tab
+- ⏳ **Focus sessions**: a full-screen focus timer with offline rain/noise/wave sounds or lofi radio; distracting sites are blocked until you're done
+- 🛡️ **Protect**: adult-content filter (95,000+ domains, SafeSearch, YouTube Restricted Mode), short-video blocker (Shorts, Reels, TikTok), always-blocked sites, mindful pause, parent PIN
+- 🎯 **Site limits & nudges**: daily limits per site, gentle check-ins
+- 🧾 **Shareable week cards**: download a beautiful image of your week for social media
+- 👤 **Local profile**: your name, picture, and themes; your data stays yours
 - 🐞 **In-app bug reporting**
+
+Everything above is free, with no trial, no account and no ads.
+
+## ➕ WebWell Plus (optional)
+
+WebWell Plus is an optional upgrade for people who want more. It is **$10 once**: one payment, no subscription. Everything that is free today stays free, and Plus only adds to it.
+
+- Block schedules, and strict focus mode (a session cannot be ended early, with an emergency exit)
+- Intent check and earn-your-break minutes
+- Weekly and monthly reports
+- Unlimited history (free keeps the last 120 days), with CSV export and print to PDF
+- Focus presets, a sound mixer, extra themes, backgrounds and clock styles
+- Focus garden and streaks
+- AI weekly coach (uses your own Google AI key; only a short summary is sent, and only when you press the button)
+
+You unlock Plus with a license key that is emailed to you after purchase. The key is checked offline inside the extension: nothing is sent anywhere. Payments are handled by [Paddle](https://www.paddle.com), the seller of record. Details, terms and refunds: [webwell.app/plus](https://webwell.app/plus), [terms](https://webwell.app/terms), [refund policy](https://webwell.app/refund). The code that checks keys is in this repository (`lib/plus.js`), like the rest of the extension.
 
 ## 🚀 Install
 
@@ -69,27 +87,29 @@
 1. Click the green **Code** button above → **Download ZIP**
 2. **Extract** the downloaded ZIP file (right-click → Extract all)
 3. Open Brave and go to `brave://extensions` (Chrome users: `chrome://extensions`)
-4. Turn on **Developer mode** — the toggle in the top-right corner
+4. Turn on **Developer mode**: the toggle in the top-right corner
 5. Click **Load unpacked** → select the extracted folder (the one containing `manifest.json`)
 6. Done! Click the puzzle piece 🧩 in your toolbar → pin **WebWell** so it's always one click away
 
-> **New tabs:** open a new tab to meet your focus page — set your name, your focus for the day, and your tasks.
+> **New tabs:** open a new tab to meet your focus page: set your name, your focus for the day, and your tasks.
 >
 > **AI chat:** Settings → AI features → follow the 3-step guide to add a free Gemini key (takes 2 minutes, key never leaves your browser).
 
 ## 🔒 Privacy
 
 - All tracking data is stored **only in your browser's local storage**. No servers, no accounts, no analytics.
-- Optional AI features send *only* your question plus a short stats summary to Google's Gemini API, and only when you ask — using **your own** API key.
+- Optional AI features send *only* your question plus a short stats summary to Google's Gemini API, and only when you ask, using **your own** API key.
 - Blocking runs on Chrome's built-in rules, with the block list shipped inside the extension. Site access is only requested when you turn a blocking feature on.
+- Chrome's install prompt shows one line (the new tab page). Screen-time tracking, alerts, site access, music services and AI are optional permissions, asked only when you turn that feature on. The `activeTab` permission is used only by the popup's "Save this page" button.
+- A WebWell Plus key is verified inside the extension. Buying Plus is handled by Paddle and involves none of your browsing data.
 - Uninstalling the extension deletes everything.
 
 Read the full policy at [webwell.app/privacy](https://webwell.app/privacy).
 
 ## 🐞 Bug reports & feedback
 
-Found something broken? [Report it here](https://docs.google.com/forms/d/e/1FAIpQLSc3o1kfbSudJYkBzvkUIA0NCeifbXgTccBnzUps0IlZq1Exdg/viewform) — it takes 30 seconds.
+Found something broken? [Report it here](https://docs.google.com/forms/d/e/1FAIpQLSc3o1kfbSudJYkBzvkUIA0NCeifbXgTccBnzUps0IlZq1Exdg/viewform). It takes 30 seconds.
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE). © 2026 Adnan. Third-party data and media: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+MIT, see [LICENSE](LICENSE). © 2026 Adnan. Third-party data and media: [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

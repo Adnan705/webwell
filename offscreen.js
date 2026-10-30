@@ -113,6 +113,9 @@ function noiseBuffer(ctx, kind) {
 }
 
 function ambientStop(fade) {
+  // Everything else that starts playing calls this first, so it also quiets the Plus mixer:
+  // one place keeps music and the mixer from playing over each other.
+  mixerStop(fade);
   if (!ambient) return;
   const a = ambient; ambient = null;
   const t = actx.currentTime;
@@ -167,6 +170,198 @@ function ambientIdle() {
   UI.playing = false; UI.tab = 'ambient';
   UI.title = 'Focus sounds'; UI.sub = 'Paused';
   push();
+}
+
+// ---------------- sound mixer (WebWell Plus) ----------------
+// Several sounds at once, each with its own level. Everything is generated here with Web Audio:
+// a few noise buffers are made once (6 s, looped) and shared by every layer, and all the
+// movement (gusts, swells, chatter, chirps) comes from native oscillators, filters and gain
+// automation, so no JavaScript runs per sample while it plays. Crackles and cup clinks are
+// rare scheduled one-shots. The UI (newtab/mixer.js) is gated on Plus.
+// The player shows a mix as an ambient sound with kind 'mix', so the popup, the focus screen and
+// the new tab's play/pause keep working with it unchanged.
+const MIX_SOUNDS = {
+  rain: 'Rain', waves: 'Waves', brown: 'Brown noise', soft: 'Soft noise',
+  cafe: 'Cafe', fire: 'Fireplace', wind: 'Wind', crickets: 'Crickets'
+};
+// Rough loudness matching, so the same slider position sounds about as loud for every layer.
+const MIX_GAIN = { rain: 0.55, waves: 0.65, brown: 0.7, soft: 0.6, cafe: 0.9, fire: 0.8, wind: 0.75, crickets: 0.22 };
+let mix = null;                          // { out, voices: { kind: { gain, nodes, timers } } } while playing
+let mixLevels = {}, mixMaster = 0.8, mixName = '';
+const mixBufs = {};
+const MIX_CLIP = (() => { const c = new Float32Array(257); for (let i = 0; i < 257; i++) c[i] = Math.max(0, i / 128 - 1); return c; })();
+
+function mixBuf(kind) {
+  if (!mixBufs[kind]) mixBufs[kind] = kind === 'crackle' ? crackleBuffer(actx) : noiseBuffer(actx, kind);
+  return mixBufs[kind];
+}
+// Sparse, short, bright pops for the fire, made once. Two copies loop at different speeds,
+// so the pattern takes minutes to repeat.
+function crackleBuffer(ctx) {
+  const len = Math.floor(ctx.sampleRate * 7.3), buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  let i = 0;
+  while (i < len) {
+    i += Math.floor(ctx.sampleRate * (0.03 + Math.random() * Math.random() * 0.6));
+    const n = Math.floor(ctx.sampleRate * (0.001 + Math.random() * 0.006)), amp = 0.2 + Math.random() * 0.8;
+    for (let k = 0; k < n && i + k < len; k++) d[i + k] = (Math.random() * 2 - 1) * amp * Math.pow(1 - k / n, 2);
+  }
+  return buf;
+}
+function loopSrc(kind, rate, offset) {
+  const s = actx.createBufferSource(); s.buffer = mixBuf(kind); s.loop = true;
+  if (rate) s.playbackRate.value = rate;
+  s.start(0, offset || Math.random() * 5);
+  return s;
+}
+const filt = (type, f, q) => { const b = actx.createBiquadFilter(); b.type = type; b.frequency.value = f; if (q) b.Q.value = q; return b; };
+// An oscillator that moves `param` by +-depth around its current value.
+function lfo(param, hz, depth, nodes, type) {
+  const o = actx.createOscillator(); o.frequency.value = hz; if (type) o.type = type;
+  const g = actx.createGain(); g.gain.value = depth;
+  o.connect(g); g.connect(param); o.start(); nodes.push(o, g);
+  return o;
+}
+
+// Builds one layer and connects it into `dest`. Returns { nodes, timers }.
+function mixVoice(kind, dest) {
+  const nodes = [], timers = [];
+  const chain = (...ns) => { for (let i = 0; i < ns.length - 1; i++) ns[i].connect(ns[i + 1]); nodes.push(...ns); return ns[ns.length - 1]; };
+  if (kind === 'rain') {                         // same recipe as the free Rain
+    chain(loopSrc('rain'), filt('highpass', 380), filt('lowpass', 7000)).connect(dest);
+  } else if (kind === 'soft') {                  // same recipe as the free "Soft noise"
+    chain(loopSrc('brown'), filt('lowpass', 1400)).connect(dest);
+  } else if (kind === 'brown') {                 // deeper and darker than Soft noise
+    chain(loopSrc('brown'), filt('lowpass', 420)).connect(dest);
+  } else if (kind === 'waves') {                 // same recipe as the free Waves
+    const swell = actx.createGain(); swell.gain.value = 0.55;
+    chain(loopSrc('brown'), filt('lowpass', 900), swell).connect(dest);
+    lfo(swell.gain, 0.09, 0.42, nodes);
+  } else if (kind === 'wind') {                  // a wandering band of noise, with slow gusts
+    const bp = filt('bandpass', 520, 0.9), gust = actx.createGain(); gust.gain.value = 0.6;
+    chain(loopSrc('rain', 0.9), bp, gust).connect(dest);
+    lfo(bp.frequency, 0.061, 260, nodes); lfo(bp.frequency, 0.17, 90, nodes);
+    lfo(gust.gain, 0.083, 0.35, nodes); lfo(gust.gain, 0.031, 0.2, nodes);
+  } else if (kind === 'cafe') {                  // a room of voices: speech-band noise that swells and chatters
+    const room = chain(actx.createGain(), filt('lowpass', 2600)); room.connect(dest);
+    [[300, 1.4, 0.37, 3.1], [700, 1.6, 0.23, 4.3], [1500, 2.2, 0.53, 5.2]].forEach(([f, q, swellHz, talkHz], i) => {
+      const g = actx.createGain(); g.gain.value = 0.5;
+      chain(loopSrc(i === 0 ? 'brown' : 'rain', 0.95 + i * 0.04), filt('bandpass', f, q), g).connect(nodes[0]);
+      lfo(g.gain, swellHz, 0.22, nodes); lfo(g.gain, talkHz, 0.12, nodes);
+    });
+    // now and then, a cup on a saucer
+    const clink = () => {
+      if (!mix || !mix.voices.cafe) return;
+      const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sine'; o.frequency.value = 2400 + Math.random() * 1800;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05 + Math.random() * 0.05, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+      o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.4);
+      o.onended = () => { try { o.disconnect(); g.disconnect(); } catch (e) {} };
+      timers[0] = setTimeout(clink, 3000 + Math.random() * 9000);
+    };
+    timers[0] = setTimeout(clink, 2000 + Math.random() * 4000);
+  } else if (kind === 'fire') {                  // a low roar plus two loops of crackle
+    const roar = actx.createGain(); roar.gain.value = 0.55;
+    chain(loopSrc('brown'), filt('lowpass', 520), roar).connect(dest);
+    lfo(roar.gain, 0.21, 0.15, nodes); lfo(roar.gain, 0.53, 0.08, nodes);
+    const pops = actx.createGain(); pops.gain.value = 0.7;
+    const hp = filt('highpass', 900); pops.connect(hp); hp.connect(dest);
+    const c1 = loopSrc('crackle', 1), c2 = loopSrc('crackle', 0.77, 2.1);
+    c1.connect(pops); c2.connect(pops); nodes.push(pops, hp, c1, c2);
+  } else if (kind === 'crickets') {              // two crickets, left and right, plus a quiet night hush
+    chain(loopSrc('brown'), filt('lowpass', 300), (() => { const g = actx.createGain(); g.gain.value = 0.9; return g; })()).connect(dest);
+    [[4400, 32, 1.05, -0.6], [5100, 38, 0.83, 0.55]].forEach(([hz, pulse, chirp, pan]) => {
+      const carrier = actx.createOscillator(); carrier.frequency.value = hz;
+      const am = actx.createGain(); am.gain.value = 0.5;      // 0..1 tremolo: the fast "trill"
+      const gate = actx.createGain(); gate.gain.value = 0;    // opens a few times a second: the chirps
+      const p = actx.createStereoPanner(); p.pan.value = pan;
+      carrier.connect(am); am.connect(gate); gate.connect(p); p.connect(dest); carrier.start();
+      nodes.push(carrier, am, gate, p);
+      lfo(am.gain, pulse, 0.5, nodes);
+      // square wave, softened so chirps start and stop without clicks, then clipped at zero so
+      // the gate is shut (not inverted) between chirps: on for a little under half the time
+      const o = actx.createOscillator(); o.type = 'square'; o.frequency.value = chirp;
+      const soft = filt('lowpass', 30), depth = actx.createGain(); depth.gain.value = 0.5;
+      const bias = actx.createConstantSource(); bias.offset.value = 0.35;
+      const sum = actx.createGain(), clip = actx.createWaveShaper(); clip.curve = MIX_CLIP;
+      o.connect(soft); soft.connect(depth); depth.connect(sum); bias.connect(sum); sum.connect(clip); clip.connect(gate.gain);
+      o.start(); bias.start(); nodes.push(o, soft, depth, bias, sum, clip);
+    });
+  }
+  return { nodes, timers };
+}
+
+function mixNames(levels) { return Object.keys(MIX_SOUNDS).filter(k => levels[k] > 0).map(k => MIX_SOUNDS[k]); }
+function cleanLevels(l) {
+  const out = {};
+  for (const k of Object.keys(MIX_SOUNDS)) { const v = Number(l && l[k]); if (v > 0) out[k] = Math.min(1, v); }
+  return out;
+}
+function mixUI() {
+  const names = mixNames(mixLevels);
+  UI.tab = 'ambient'; UI.kind = 'mix'; UI.key = 'ambient:mix'; UI.url = ''; UI.preview = false; UI.track = null; UI.ctx = null;
+  UI.title = (UI.playing ? '♪ ' : '') + (mixName || 'Your mix');
+  UI.sub = UI.playing ? (names.length ? names.join(', ') : 'Turn a sound up') : 'Paused';
+  UI.art = artUrl('newtab/img/lofi-night.webp');
+}
+// Fades every layer to its level; adds the layers that are now up and removes the ones at zero.
+function mixApply() {
+  if (!mix) return;
+  const t = actx.currentTime;
+  mix.out.gain.setTargetAtTime(mixMaster, t, 0.15);
+  for (const k of Object.keys(MIX_SOUNDS)) {
+    const want = (mixLevels[k] || 0) * MIX_GAIN[k], v = mix.voices[k];
+    if (want > 0 && !v) {
+      const g = actx.createGain(); g.gain.value = 0; g.connect(mix.out);
+      mix.voices[k] = Object.assign({ gain: g }, mixVoice(k, g));
+      g.gain.setTargetAtTime(want, t, 0.4);
+    } else if (v) {
+      clearTimeout(v.dropTimer);
+      v.gain.gain.cancelScheduledValues(t); v.gain.gain.setValueAtTime(v.gain.gain.value, t);
+      v.gain.gain.setTargetAtTime(want, t, 0.15);
+      if (want <= 0) v.dropTimer = setTimeout(() => { if (mix && mix.voices[k] === v && !(mixLevels[k] > 0)) { mixDropVoice(v); delete mix.voices[k]; } }, 1500);
+    }
+  }
+}
+function mixDropVoice(v) {
+  (v.timers || []).forEach(clearTimeout);
+  clearTimeout(v.dropTimer);
+  [v.gain].concat(v.nodes).forEach(n => { try { n.stop && n.stop(); } catch (e) {} try { n.disconnect(); } catch (e) {} });
+}
+function mixerPlay(levels, master, name) {
+  if (levels) mixLevels = cleanLevels(levels);
+  if (typeof master === 'number' && master >= 0) mixMaster = Math.min(1, master);
+  if (name !== undefined) mixName = String(name || '').slice(0, 40);
+  if (!mix) {
+    stopRadio(); scPause(); spPause();
+    ambientStop(false);               // also clears any old mixer
+    if (!actx) actx = new AudioContext();
+    if (actx.state === 'suspended') actx.resume().catch(() => {});
+    const out = actx.createGain(); out.gain.value = 0; out.connect(actx.destination);
+    mix = { out, voices: {} };
+  }
+  mixApply();
+  UI.playing = true; mixUI(); push();
+}
+function mixerSet(levels, master, name) {
+  if (levels) mixLevels = cleanLevels(levels);
+  if (typeof master === 'number' && master >= 0) mixMaster = Math.min(1, master);
+  if (name !== undefined) mixName = String(name || '').slice(0, 40);
+  if (mix) { mixApply(); mixUI(); push(); }
+}
+function mixerStop(fade) {
+  if (!mix) return;
+  const m = mix; mix = null;
+  const t = actx.currentTime;
+  try { m.out.gain.cancelScheduledValues(t); m.out.gain.setValueAtTime(m.out.gain.value, t); m.out.gain.linearRampToValueAtTime(0, t + (fade ? 0.8 : 0.05)); } catch (e) {}
+  Object.values(m.voices).forEach(v => (v.timers || []).forEach(clearTimeout));
+  setTimeout(() => { Object.values(m.voices).forEach(mixDropVoice); try { m.out.disconnect(); } catch (e) {} }, fade ? 900 : 80);
+}
+// For the tests and the UI: what is actually connected and how loud.
+function mixerState() {
+  const gains = {};
+  if (mix) for (const k of Object.keys(mix.voices)) gains[k] = Math.round(mix.voices[k].gain.gain.value * 1000) / 1000;
+  return { playing: !!mix, levels: Object.assign({}, mixLevels), master: mixMaster, name: mixName,
+    ctx: actx ? actx.state : 'none', out: mix ? Math.round(mix.out.gain.value * 1000) / 1000 : 0, voices: mix ? Object.keys(mix.voices) : [], gains };
 }
 
 function stopAll() {
@@ -450,7 +645,7 @@ function onSpotifyMessage(d) {
     spPlaying = playing;
     // Moving on when a song ends: use the length the player reports, and also catch it
     // pausing itself at the very end. Playlists loop, so focus music never just stops.
-    if (spCtx && spCtx.ent.tracks.length > 1) {
+    if (spCtx) {      // also a single song: it moves on to the next saved item when it ends
       spClearTimer();
       if (playing && pl.duration > 0) {
         spTimer = setTimeout(() => spNext(1), Math.max(300, pl.duration - pl.position + SP_ADVANCE_SLACK));
@@ -473,7 +668,26 @@ function spNext(dir) {
   if (spCtx && spCtx.ent.tracks.length > 1) { spPlayAt(spCtx.idx + dir); return Promise.resolve(true); }
   return spStep(dir);
 }
+// When a song ends and nothing else is queued, carry on down the Saved list, whatever mix of
+// SoundCloud and Spotify it holds, and start over at the top after the last one.
+async function savedStep(dir) {
+  const r = await chrome.storage.local.get(['ntFavs', 'ntMusic']);
+  const keyOf = f => f.kind === 'spotify' ? ((parseSpotify(f.url) || {}).url || f.url) : f.url;
+  const list = (Array.isArray(r.ntFavs) ? r.ntFavs : []).filter(f => f && f.url && (f.kind === 'soundcloud' || f.kind === 'spotify'));
+  const cur = UI.tab === 'spotify' ? spUrl : currentScUrl;
+  const i = list.findIndex(f => f.kind === UI.tab && keyOf(f) === cur);
+  if (list.length < 2 || i < 0 || /\/sets\//.test(list[i].url)) return false;   // a SoundCloud set moves on by itself
+  const next = list[(i + dir + list.length) % list.length];
+  if (next.kind === 'soundcloud') {
+    await chrome.storage.local.set({ ntMusic: Object.assign({}, r.ntMusic || {}, { scUrl: next.url, tab: 'soundcloud' }) });
+    loadSC(next.url, { title: next.title, art: next.art });
+  } else {
+    spLoad(next.url, { title: next.title, art: next.art });
+  }
+  return true;
+}
 async function spStep(dir) {
+  if (await savedStep(dir)) return true;
   const r = await chrome.storage.local.get(['ntFavs', 'spMeta']);
   const meta = r.spMeta || {};
   let list = (Array.isArray(r.ntFavs) ? r.ntFavs : []).filter(f => f && f.kind === 'spotify' && f.url)
@@ -517,7 +731,8 @@ window.addEventListener('message', e => {
   } else if (m.method === 'finish') {
     scPlaying = false;
     UI.playing = false; UI.sub = 'Finished'; push();
-    scQueueStep(1).catch(() => {});   // carry on to the next searched track, if there is one
+    // carry on to the next searched track, else the next saved song
+    scQueueStep(1).then(ok => ok || savedStep(1)).catch(() => {});
   } else if (m.method === 'error') {
     scPlaying = false;
     UI.playing = false; UI.title = 'SoundCloud'; UI.sub = 'Player error — try another'; push();
@@ -561,10 +776,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       case 'sc-prev': scStep(-1); done({ ok: true }); break;
       case 'ambient-play': ambientPlay(String(msg.kind || 'rain')); done({ ok: true }); break;
       case 'ambient-toggle':
-        if (ambient) { ambientStop(true); ambientIdle(); } else ambientPlay(String(msg.kind || UI.kind || 'rain'));
+        if (mix) { mixerStop(true); UI.playing = false; mixUI(); push(); }
+        else if (ambient) { ambientStop(true); ambientIdle(); }
+        else if ((msg.kind || UI.kind) === 'mix' && Object.keys(mixLevels).length) mixerPlay();
+        else ambientPlay(String(msg.kind && msg.kind !== 'mix' ? msg.kind : (UI.kind && UI.kind !== 'mix' ? UI.kind : 'rain')));
+        done({ ok: true }); break;
+      case 'mixer-play': mixerPlay(msg.levels, msg.master, msg.name); done({ ok: true }); break;
+      case 'mixer-set': mixerSet(msg.levels, msg.master, msg.name); done({ ok: true }); break;
+      case 'mixer-stop':
+        if (mix) { mixerStop(true); UI.playing = false; mixUI(); push(); }
+        done({ ok: true }); break;
+      case 'mixer-state': done(mixerState()); break;
+      case 'mixer-forget':       // Plus ended: stop and drop the mix; the next ambient play is plain Rain
+        mixerStop(true); mixLevels = {}; mixName = '';
+        if (UI.kind === 'mix') { UI.kind = 'rain'; UI.key = ''; ambientIdle(); }
         done({ ok: true }); break;
       case 'ambient-next':
       case 'ambient-prev': {
+        // A mix has no "next sound": Next/Back leave it alone rather than replacing it.
+        if (UI.kind === 'mix') { push(); done({ ok: true }); break; }
         const i = AMBIENT_KINDS.indexOf(UI.kind || 'rain');
         const step = msg.cmd === 'ambient-next' ? 1 : -1;
         ambientPlay(AMBIENT_KINDS[(i + step + AMBIENT_KINDS.length) % AMBIENT_KINDS.length]);

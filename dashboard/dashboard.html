@@ -7,7 +7,10 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-400-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-600-normal.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin href="../fonts/inter-latin-700-normal.woff2">
-<link rel="stylesheet" href="dashboard.css?v=1.8.2">
+<link rel="stylesheet" href="dashboard.css?v=1.9.0">
+<link rel="stylesheet" href="../lib/plus.css?v=1.9.0">
+<link rel="stylesheet" href="reports.css?v=1.9.0">
+<link rel="stylesheet" href="plus-view.css?v=1.9.0">
 </head>
 <body>
 <div class="app">
@@ -27,9 +30,17 @@
     <button class="nav" data-view="ask" title="Ask AI" aria-label="Ask AI">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7.4V4.7"/><circle cx="12" cy="3.7" r="1"/><path d="M5.2 12.2a4.8 4.8 0 0 1 4.8-4.8h4a4.8 4.8 0 0 1 4.8 4.8v0a4.8 4.8 0 0 1-4.8 4.8h-2.6L8 20.2V17a4.8 4.8 0 0 1-2.8-4.8z"/><path d="M3.2 11v2.6M20.8 11v2.6"/><rect x="7.8" y="10.1" width="8.4" height="4.2" rx="2.1"/><circle cx="10.3" cy="12.2" r=".6" fill="currentColor" stroke="none"/><circle cx="13.7" cy="12.2" r=".6" fill="currentColor" stroke="none"/></svg>
     </button>
+    <button class="nav" data-view="reports" title="Reports" aria-label="Reports">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M14.5 3.5V7.5H18.5"/><path d="M9 17v-3M12 17v-5M15 17v-2"/></svg>
+    </button>
     <div class="rail-spacer"></div>
+
     <button class="nav" data-view="settings" title="Settings" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg>
+    </button>
+    <button class="nav go-plus" data-view="plus" title="See what WebWell Plus adds" aria-label="See what WebWell Plus adds">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10l3.5 5L12 20.5 3.5 9z"/><path d="M3.5 9h17M9.5 4L8 9l4 11.5L16 9l-1.5-5"/></svg>
+      <span class="gp-label">Go Plus</span>
     </button>
   </aside>
 
@@ -169,7 +180,9 @@
     <section id="view-trends" class="view hidden"></section>
     <section id="view-protect" class="view hidden"></section>
     <section id="view-ask" class="view hidden"></section>
-    <section id="view-settings" class="view hidden"></section>
+    <section id="view-reports" class="view hidden"></section>
+<section id="view-plus" class="view hidden"></section>
+<section id="view-settings" class="view hidden"></section>
 
     <footer class="credit">Developed by <b><a href="https://adnankhan.cc" target="_blank" rel="noopener">Adnan</a></b> · Private by design — AI features only send your question and a stats summary to Google</footer>
   </main>
@@ -185,13 +198,18 @@
   </aside>
 </div>
 
-<script src="../newtab/vector-bg.js?v=1.8.2"></script>
-<script src="../lib/time.js?v=1.8.2"></script>
-<script src="../lib/categories.js?v=1.8.2"></script>
-<script src="../lib/charts.js?v=1.8.2"></script>
-<script src="../lib/ai.js?v=1.8.2"></script>
-<script src="../lib/protect.js?v=1.8.2"></script>
-<script src="dashboard.js?v=1.8.2"></script>
-<script src="protect-view.js?v=1.8.2"></script>
+<script src="../newtab/vector-bg.js?v=1.9.0"></script>
+<script src="../lib/time.js?v=1.9.0"></script>
+<script src="../lib/categories.js?v=1.9.0"></script>
+<script src="../lib/charts.js?v=1.9.0"></script>
+<script src="../lib/ai.js?v=1.9.0"></script>
+<script src="../lib/protect.js?v=1.9.0"></script>
+<script src="../lib/plus.js?v=1.9.0"></script>
+<script src="../lib/plus-focus.js?v=1.9.0"></script>
+<script src="../lib/reports.js?v=1.9.0"></script>
+<script src="dashboard.js?v=1.9.0"></script>
+<script src="protect-view.js?v=1.9.0"></script>
+<script src="reports-view.js?v=1.9.0"></script>
+<script src="plus-view.js?v=1.9.0"></script>
 </body>
 </html>

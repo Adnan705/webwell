@@ -5,7 +5,7 @@
 WebWell is available on the Chrome Web Store (https://chromewebstore.google.com/detail/webwell/mnjakeggjhfdookcdgjdgmamhcobnofi). It can also be installed from source on GitHub with "Load unpacked" in chrome://extensions or brave://extensions.
 
 Key facts:
-- Price: free. There is no paid plan, trial or account.
+- Price: the extension is free, with no trial or account. An optional upgrade, WebWell Plus, adds extra features for a one-time $10 (launch price, no subscription). Everything that is free stays free.
 - Privacy: browsing statistics are stored only in the browser's local storage on the user's device. Nothing is sent to a WebWell server.
 - Browsers: Google Chrome and Brave on desktop. Other Chromium browsers may work but are not officially supported. Firefox and Safari are not supported.
 - Maker: Adnan Khan, an independent developer (https://adnankhan.cc). Contact: info.adnanak@gmail.com
@@ -19,6 +19,8 @@ Key facts:
 - [Features: focus sessions](https://webwell.app/#focus): a full-screen timer with calming sound; distracting sites are blocked until the session ends.
 - [Features: Protect](https://webwell.app/#protect): adult-content filter, short-video blocker, custom block list, mindful pause and parent PIN. All off until the user switches them on.
 
+- [WebWell Plus](https://webwell.app/plus): the optional upgrade. Adds block schedules, strict focus mode (with an emergency exit), intent check, earn your break, weekly and monthly reports, full history (free keeps the last 120 days) with CSV export and print to PDF, focus presets, a sound mixer, extra themes, a focus garden with streaks and an AI weekly coach (uses the user's own Google AI key). $10 once, no subscription. Payments are handled by Paddle, the seller of record. Unlocked with a key that is checked offline inside the extension, so nothing is sent anywhere. All current features stay free. Checkout is on https://webwell.app/plus (payments by Paddle).
+
 ## Get it
 
 - [Chrome Web Store](https://chromewebstore.google.com/detail/webwell/mnjakeggjhfdookcdgjdgmamhcobnofi): add WebWell to Chrome or Brave in one click.
@@ -27,6 +29,8 @@ Key facts:
 ## Trust and privacy
 
 - [Privacy policy](https://webwell.app/privacy): exactly what the extension stores on the device, when anything leaves the browser, why each permission is needed, and what this website collects.
+- [Terms of service](https://webwell.app/terms) and [Refund policy](https://webwell.app/refund): the terms for WebWell and the optional WebWell Plus upgrade.
+- [Changelog](https://webwell.app/changelog): what changed in each version.
 - [Source code on GitHub](https://github.com/Adnan705/webwell): the full open-source project (MIT licence), including the README and install guide.
 
 ## Blog

@@ -1472,7 +1472,9 @@ const VIEW_RENDERERS = {
   trends: () => renderTrends(),
   ask: () => renderAsk(),
   settings: () => renderSettings(),
-  protect: () => renderProtect()   // protect-view.js
+  protect: () => renderProtect(),  // protect-view.js
+  reports: () => renderReports(),  // reports-view.js (WebWell Plus)
+  plus: () => renderPlus()         // plus-view.js
 };
 async function renderView(name) {
   const fn = VIEW_RENDERERS[name];

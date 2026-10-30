@@ -204,7 +204,7 @@ check('suggested playlists are parseable and unique', () => {
   assert.strictEqual(new Set(urls).size, urls.length);
 });
 check('Spotify permissions + player wiring', () => {
-  assert(manifest.host_permissions.includes('https://open.spotify.com/*'), 'host permission for oEmbed missing');
+  assert((manifest.optional_host_permissions || []).includes('https://open.spotify.com/*'), 'host permission for oEmbed missing');
   const html = read('offscreen.html');
   assert(html.includes('id="spFrame"') && html.includes('encrypted-media'), 'offscreen Spotify frame missing');
   assert(html.indexOf('lib/spotify.js') < html.indexOf('offscreen.js'), 'spotify.js must load before offscreen.js');

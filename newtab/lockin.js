@@ -13,6 +13,105 @@
   let prefs = { mins: 25, breakMins: 5, sound: 'rain', block: true };
   let pickMins = 25, pickSound = 'rain';
   let ticker = null, endArmed = 0;
+  // WebWell Plus (presets, strict mode). plusOn is re-checked whenever the key changes.
+  let plusOn = false, presets = [], pickPreset = '';
+
+  /* ---------- WebWell Plus: shared logic + styles, loaded on demand ---------- */
+  // newtab.html is not ours to edit, so the Plus logic and styles are added from here.
+  const plusReady = new Promise(resolve => {
+    try {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = 'plus-focus.css?v=1.9.0';
+      document.head.append(css);
+      if (typeof presetsList === 'function') return resolve();
+      const s = document.createElement('script');
+      s.src = '../lib/plus-focus.js?v=1.9.0';
+      s.onload = () => resolve(); s.onerror = () => resolve();
+      document.head.append(s);
+    } catch (e) { resolve(); }
+  });
+  const pfLoaded = () => typeof strictLocked === 'function';
+  async function refreshPlus() {
+    await plusReady;
+    try { plusOn = typeof plusActive === 'function' && await plusActive(); } catch (e) { plusOn = false; }
+    try { presets = pfLoaded() ? presetsList((await chrome.storage.local.get('plusPresets')).plusPresets) : []; } catch (e) { presets = []; }
+  }
+  // Strict and still running? strictLocked() treats odd or overdue data as not strict, so no one is trapped.
+  function strictNow() { return plusOn && pfLoaded() && strictLocked(lockin, Date.now()); }
+
+  // Presets above the task, a strict switch under the blocking switch. Free users see both as a
+  // preview: tapping opens a short note about Plus instead.
+  function buildPlusSheet() {
+    let top = $l('lkPlusTop');
+    if (!top) {
+      top = document.createElement('div'); top.id = 'lkPlusTop';
+      document.querySelector('#lkSheet .lk-head').after(top);
+    }
+    let row = $l('lkStrictRow');
+    if (!row) {
+      row = document.createElement('div'); row.id = 'lkStrictRow';
+      $l('lkBlock').closest('label').after(row);
+    }
+    if (!pfLoaded()) { top.replaceChildren(); row.replaceChildren(); return; }
+    const esc2 = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const list = plusOn ? presets : PRESET_DEFAULTS;
+    top.innerHTML = (plusOn && !list.length) ? '' :
+      '<p class="lk-label lk-plus-label">Presets' + (plusOn ? '<button type="button" class="lk-plus-edit" id="lkPresetEdit">Edit</button>' : '<span class="plus-badge">Plus</span>') + '</p>' +
+      '<div class="lk-chips lk-presets' + (plusOn ? '' : ' is-preview') + '" id="lkPresets">' + list.map(p =>
+        '<button type="button" data-preset="' + esc2(p.id) + '"' + (plusOn ? ' title="Start ' + esc2(p.name) + ' now"' : ' aria-describedby="lkPlusNote"') + '><b>' + esc2(p.name) + '</b><small>' + p.mins + ' min' + (p.strict ? ' · strict' : '') + '</small></button>').join('') + '</div>' +
+      '<div class="lk-plus-note hidden" id="lkPlusNote"></div>';
+    row.innerHTML = plusOn
+      ? '<label class="lk-toggle"><input type="checkbox" id="lkStrict"><span class="tk" aria-hidden="true"></span><span>Strict: no ending early, blocked sites stay blocked</span></label>'
+      : '<button type="button" class="lk-plus-row" id="lkStrictMore" aria-expanded="false"><span class="tk" aria-hidden="true"></span><span>Strict mode, so it can’t be ended early</span><span class="plus-badge">Plus</span></button>' +
+        '<div class="lk-plus-note hidden" id="lkStrictNote"></div>';
+    const showLock = (box, id, btn) => {
+      if (!box.innerHTML) { box.innerHTML = plusLockHtml(id); plusWireLocks(box); }
+      box.classList.toggle('hidden');
+      if (btn) btn.setAttribute('aria-expanded', !box.classList.contains('hidden'));
+    };
+    top.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+      if (!plusOn) { showLock($l('lkPlusNote'), 'presets'); return; }
+      const p = presets.find(x => x.id === b.dataset.preset);
+      if (!p) return;
+      // One tap: fill the sheet from the preset and start. start() must run straight from the click.
+      pickMins = p.mins; pickSound = p.sound; pickPreset = p.name;
+      $l('lkBlock').checked = p.block || p.strict;
+      $l('lkStrict').checked = !!p.strict;
+      start();
+    }));
+    if ($l('lkPresetEdit')) $l('lkPresetEdit').addEventListener('click', () => chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html#protect') }));
+    if ($l('lkStrictMore')) $l('lkStrictMore').addEventListener('click', () => showLock($l('lkStrictNote'), 'strict', $l('lkStrictMore')));
+    if ($l('lkStrict')) $l('lkStrict').addEventListener('change', e => { if (e.target.checked) $l('lkBlock').checked = true; });   // strict needs blocking
+    if (!$l('lkBlock')._pfWired) {
+      $l('lkBlock')._pfWired = true;
+      $l('lkBlock').addEventListener('change', e => { if (!e.target.checked && $l('lkStrict')) $l('lkStrict').checked = false; });
+    }
+  }
+
+  // Strict sessions swap Pause and End for an emergency exit that needs a typed phrase.
+  function buildEmergency() {
+    if ($l('lkEm')) return;
+    const box = document.createElement('div');
+    box.id = 'lkEm'; box.className = 'lk-em hidden';
+    box.innerHTML = '<button type="button" class="lk-em-link" id="lkEmBtn" aria-expanded="false">Emergency exit</button>' +
+      '<form class="lk-em-box hidden" id="lkEmBox"><label for="lkEmIn">To stop now, type <b></b></label>' +
+      '<div class="lk-em-row"><input class="lk-input" id="lkEmIn" autocomplete="off" spellcheck="false"><button type="submit" id="lkEmGo" disabled>Stop</button></div>' +
+      '<p>It will be noted in your focus history.</p></form>';
+    document.querySelector('#lkStage .lk-controls').after(box);
+    box.querySelector('label b').textContent = typeof STRICT_PHRASE === 'string' ? STRICT_PHRASE : 'I choose to stop';
+    $l('lkEmBtn').addEventListener('click', () => {
+      const f = $l('lkEmBox'); f.classList.toggle('hidden');
+      $l('lkEmBtn').setAttribute('aria-expanded', !f.classList.contains('hidden'));
+      if (!f.classList.contains('hidden')) $l('lkEmIn').focus();
+    });
+    $l('lkEmIn').addEventListener('input', e => { $l('lkEmGo').disabled = !(pfLoaded() && strictPhraseOk(e.target.value)); });
+    $l('lkEmBox').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!(pfLoaded() && strictPhraseOk($l('lkEmIn').value))) return;
+      $l('lkEmGo').disabled = true;
+      await send('emergency', { phrase: $l('lkEmIn').value });
+    });
+  }
 
   function send(op, extra) {
     return chrome.runtime.sendMessage(Object.assign({ type: 'ww-lockin', op }, extra || {})).catch(() => {});
@@ -76,6 +175,8 @@
     markSound($l('lkSound'), pickSound);
     $l('lkBlock').checked = prefs.block !== false;
     $l('lkNote').classList.add('hidden');
+    pickPreset = '';
+    buildPlusSheet();
     startLabel();
     $l('lkSheet').classList.remove('hidden');
     setTimeout(() => (f ? $l('lkStart') : $l('lkTask')).focus(), 30);
@@ -93,7 +194,9 @@
   }
 
   async function start() {
-    const block = $l('lkBlock').checked;
+    const strict = !!(plusOn && $l('lkStrict') && $l('lkStrict').checked);
+    const preset = pickPreset; pickPreset = '';
+    const block = $l('lkBlock').checked || strict;
     let canBlock = true;
     if (!block) await askAlertsOnce();   // session-end alerts need the notifications permission (asked once)
     // Must be the first await after the click: Chrome only shows the
@@ -106,9 +209,15 @@
       }
     }
     const task = $l('lkTask').value.trim();
-    prefs = { mins: pickMins, breakMins: prefs.breakMins, sound: pickSound, block };
-    chrome.storage.local.set({ lockPrefs: prefs }).catch(() => {});
-    await send('start', { mins: pickMins, task, sound: pickSound, block: block && canBlock, breakMins: prefs.breakMins });
+    const plusExtra = {};
+    if (strict) plusExtra.strict = true;
+    if (preset) plusExtra.preset = preset;
+    // A preset is a one-off: it should not become the default length and sound for the next session.
+    if (!preset) {
+      prefs = { mins: pickMins, breakMins: prefs.breakMins, sound: pickSound, block };
+      chrome.storage.local.set({ lockPrefs: prefs }).catch(() => {});
+    }
+    await send('start', Object.assign({ mins: pickMins, task, sound: pickSound, block: block && canBlock, breakMins: prefs.breakMins }, plusExtra));
     playSound(pickSound);
     setTimeout(closeSheet, canBlock ? 0 : 1600);
   }
@@ -160,6 +269,8 @@
 
   function tick() {
     if (!lockin || !(lockin.phase === 'focus' || lockin.phase === 'break')) return;
+    // Strict time is up: bring the normal controls back at once (the background ends the session).
+    if (tick.strict && !strictNow()) { render(); return; }
     const left = leftMs(lockin);
     $l('lkTime').textContent = mmss(left);
     const total = lockin.totalMs || 1;
@@ -179,30 +290,43 @@
     if (running) {
       const isBreak = lockin.phase === 'break';
       const paused = lockin.pausedLeft != null;
+      const strict = !isBreak && strictNow();
+      tick.strict = strict;
       $l('lkStage').classList.toggle('is-break', isBreak);
-      $l('lkPhase').textContent = isBreak ? 'Break' : paused ? 'Paused' : 'Focusing';
+      $l('lkStage').classList.toggle('is-strict', strict);
+      $l('lkPhase').textContent = isBreak ? 'Break' : paused ? 'Paused' : strict ? 'Strict focus' : 'Focusing';
       $l('lkTaskText').textContent = isBreak ? 'Stand up, stretch, look away from the screen.' : (lockin.task || '');
-      $l('lkPause').classList.toggle('hidden', isBreak);
+      $l('lkPause').classList.toggle('hidden', isBreak || strict);
       $l('lkPause').textContent = paused ? 'Resume' : 'Pause';
+      $l('lkEnd').classList.toggle('hidden', strict);
       if (!endArmed) {
         $l('lkEnd').textContent = isBreak ? 'Skip break' : 'End session';
         $l('lkEnd').classList.remove('armed');
       }
+      if (strict || $l('lkEm')) {
+        buildEmergency();
+        $l('lkEm').classList.toggle('hidden', !strict);
+        if (!strict) { $l('lkEmBox').classList.add('hidden'); $l('lkEmIn').value = ''; $l('lkEmGo').disabled = true; }
+      }
       $l('lkSounds').classList.toggle('hidden', isBreak);
       if (!isBreak) markSound($l('lkSounds'), lockin.sound || 'none');
       $l('lkFoot').textContent = isBreak ? 'Next: another focus session, or call it a day.'
+        : strict ? 'Strict mode. Blocked sites stay blocked until ' + clockAt(Date.now() + leftMs(lockin)) + '.'
         : lockin.block ? (paused ? 'Distracting sites stay blocked while paused.' : 'Distracting sites are blocked until ' + clockAt(Date.now() + leftMs(lockin)) + '.')
         : 'Ends at ' + clockAt(Date.now() + leftMs(lockin)) + '.';
       tick();
       ticker = setInterval(tick, 250);
     } else if (done) {
+      tick.strict = false;
       const m = lockin.doneMins || 0;
-      $l('lkDoneTitle').textContent = m >= 1 ? m + ' minute' + (m === 1 ? '' : 's') + ' focused' : 'Session ended';
+      $l('lkDoneTitle').textContent = lockin.emergency ? 'Session stopped' : m >= 1 ? m + ' minute' + (m === 1 ? '' : 's') + ' focused' : 'Session ended';
       const { focusLog } = await chrome.storage.local.get('focusLog');
       const day = (focusLog || {})[dayKey(Date.now())];
-      $l('lkDoneSub').textContent = day && day.sessions
+      $l('lkDoneSub').textContent = (lockin.emergency ? (m >= 1 ? m + ' minutes still count. ' : '') + 'Stopping was your call, and that is fine. '
+        : lockin.earned ? 'You earned ' + lockin.earned + ' break minute' + (lockin.earned === 1 ? '' : 's') + '. ' : '') +
+        (day && day.sessions
         ? 'Today: ' + day.sessions + ' session' + (day.sessions === 1 ? '' : 's') + ' · ' + fmtDurShort(day.mins * 60) + ' focused'
-        : 'Every session counts toward your day.';
+        : 'Every session counts toward your day.');
     }
   }
 
@@ -214,9 +338,16 @@
     lockin = r.lockin || null;
     // A finished session's summary only greets the next tab for an hour.
     if (lockin && lockin.phase === 'done' && Date.now() - (lockin.doneAt || 0) > 3600000) { send('dismiss'); lockin = null; }
+    // Only a strict session has to know about Plus before the first paint (so End never flashes up).
+    if (lockin && lockin.strict) await refreshPlus();
+    else refreshPlus().then(() => { if (!$l('lkSheet').classList.contains('hidden')) buildPlusSheet(); if (lockin && lockin.strict) render(); });
     render();
     chrome.storage.onChanged.addListener((c, area) => {
-      if (area !== 'local' || !c.lockin) return;
+      if (area !== 'local') return;
+      if (c.plusKey || c.plusPresets) {
+        refreshPlus().then(() => { if (!$l('lkSheet').classList.contains('hidden')) buildPlusSheet(); render(); });
+      }
+      if (!c.lockin) return;
       lockin = c.lockin.newValue || null;
       endArmed = 0;
       render();

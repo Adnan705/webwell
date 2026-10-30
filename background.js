@@ -1,6 +1,6 @@
 // WebWell background service worker: tracks active-tab time per domain.
 'use strict';
-importScripts('lib/time.js', 'lib/categories.js', 'lib/ai.js', 'lib/protect.js');
+importScripts('lib/time.js', 'lib/categories.js', 'lib/ai.js', 'lib/protect.js', 'lib/plus.js', 'lib/plus-focus.js');
 
 // ---------------------------------------------------------------------------
 // MV3 service workers are killed ~30s after the last event, which wipes ALL
@@ -187,9 +187,11 @@ chrome.idle.onStateChanged.addListener((state) => serialized(async () => {
 chrome.alarms.onAlarm.addListener((alarm) => serialized(async () => {
   if (alarm.name === 'lockin-end') { await finishLockinPhase(); return; }
   if (alarm.name === 'ww-protect-retry') { await syncProtectRules(); return; }
+  if (alarm.name === 'ww-sched') { await syncProtectRules(); return; }   // a block schedule opens or closes now
   if (alarm.name !== 'webwell-tick') return;
   try { await updateBadge(); } catch (e) {}
   try { await expirePauseAllows(); } catch (e) {}
+  try { await plusFocusTick(); } catch (e) {}
   await resync(); // restarts the session if the worker was killed mid-session
   await flush();  // banks the elapsed time
   // Each check is isolated: one throwing must not skip the rest this minute.
@@ -328,6 +330,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   // Blocking follows its settings, the focus-session state and the user's categories.
   if (changes.protect || changes.lockin || changes.categories) syncProtectRules();
+  // Plus: schedules apply as soon as they are saved, and vanish the moment Plus is switched off.
+  else if (changes.plusSchedules || changes.plusKey) syncProtectRules();
   if (changes.lockin) scheduleLockin();
   if (!changes.settings) return;
   serialized(async () => {
@@ -386,7 +390,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg && msg.type === 'ww-pause-continue') {
-    allowAfterPause(String(msg.url || '')).then(ok => sendResponse({ ok }), () => sendResponse({ ok: false }));
+    allowAfterPause(String(msg.url || '')).then(async ok => {
+      if (ok && msg.intent) { try { await saveIntent(domainOf(String(msg.url || '')), msg.intent, PAUSE_ALLOW_MS / 60000); } catch (e) {} }
+      sendResponse({ ok });
+    }, () => sendResponse({ ok: false }));
+    return true;
+  }
+  if (msg && msg.type === 'ww-plus-blocked-info') {
+    plusBlockedInfo(String(msg.url || '')).then(sendResponse, () => sendResponse({ plus: false }));
+    return true;
+  }
+  if (msg && msg.type === 'ww-earn-use') {
+    earnUse(String(msg.url || ''), msg.intent).then(sendResponse, () => sendResponse({ ok: false }));
     return true;
   }
   if (msg && msg.type === 'ww-protect-sync') {
@@ -394,7 +409,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg && msg.type === 'ww-lockin') {
-    serialized(() => lockinOp(msg)).then(() => sendResponse({ ok: true }), () => sendResponse({ ok: false }));
+    // A strict session refuses some ops; the page is told why so it can say so.
+    serialized(() => lockinOp(msg)).then(res => sendResponse(res && res.refused ? { ok: false, refused: res.refused } : { ok: true }),
+      () => sendResponse({ ok: false }));
     return true;
   }
   return false;
@@ -413,9 +430,10 @@ async function applyProtectRules() {
   // Blocking is an optional permission. Until it is granted there is nothing to do; try again shortly in case
   // it was only just granted and this worker has not picked up the new API yet.
   if (!chrome.declarativeNetRequest) { try { chrome.alarms.create('ww-protect-retry', { delayInMinutes: 0.2 }); } catch (e) {} return; }
-  const r = await storeGet(['protect', 'lockin', 'categories']);
+  const r = await storeGet(['protect', 'lockin', 'categories', 'plusSchedules']);
   const p = protectState(r.protect);
-  const rules = buildDynamicRules(p, r.lockin, r.categories || {});
+  const plus = await plusProtectExtras(r, p);
+  const rules = buildDynamicRules(p, r.lockin, r.categories || {}, plus.extra);
   const existing = await chrome.declarativeNetRequest.getDynamicRules();
   const ours = existing.map(x => x.id).filter(id => id >= 1000 && id < 5000);
   await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: ours, addRules: rules });
@@ -425,12 +443,102 @@ async function applyProtectRules() {
   } catch (e) {}
   if (!p.pause) {
     try {
+      // Only the mindful-pause allowances go with the pause; minutes someone earned (Plus) are theirs to keep.
       const sess = await chrome.declarativeNetRequest.getSessionRules();
-      const ids = sess.map(x => x.id).filter(id => id >= RULE_IDS.pauseAllow);
+      const ids = sess.filter(x => x.id >= RULE_IDS.pauseAllow && x.priority !== RULE_PRIORITY.earnAllow).map(x => x.id);
       if (ids.length) await chrome.declarativeNetRequest.updateSessionRules({ removeRuleIds: ids });
     } catch (e) {}
   }
+  if (plus.extra) {
+    // One alarm at the next minute any schedule opens or closes, so blocking flips on time.
+    try {
+      if (plus.next) chrome.alarms.create('ww-sched', { when: Math.max(Date.now() + 1000, plus.next + 500) });
+      else await chrome.alarms.clear('ww-sched');
+    } catch (e) {}
+  }
   await syncShortsScript(p);
+}
+
+// ===========================================================================
+// WebWell Plus: block schedules, strict focus, intent check, earn your break.
+// Pure rules live in lib/plus-focus.js; this part only reads storage and acts.
+// ===========================================================================
+let lastSchedSig = null;   // which schedules were open at the last sync (null after a worker restart)
+
+// The Plus additions to the blocking rules, or { extra: null } for free users (rules stay exactly free).
+async function plusProtectExtras(r, p) {
+  if (!(await plusActive())) { lastSchedSig = ''; return { extra: null, next: null }; }
+  const now = new Date();
+  const focusList = focusBlockList(p, r.categories || {});
+  const open = activeSchedules(r.plusSchedules, now);
+  const schedule = [], scheduleStrict = [];
+  for (const s of open) (s.strict ? scheduleStrict : schedule).push(...scheduleSites(s, focusList));
+  lastSchedSig = open.map(s => s.id).join(',');
+  return { extra: { strict: strictLocked(r.lockin, now.getTime()), schedule, scheduleStrict },
+    next: nextScheduleChange(r.plusSchedules, now) };
+}
+
+// Every minute: a safety net behind the alarms, which can be late or lost while the computer sleeps.
+async function plusFocusTick() {
+  if (!(await plusActive())) return;
+  const r = await storeGet(['plusSchedules', 'lockin']);
+  const l = r.lockin;
+  // A strict session must always end on time, even if its alarm never fired. Nobody stays locked in.
+  if (l && l.strict && l.phase === 'focus' && l.pausedLeft == null && l.endsAt && l.endsAt <= Date.now()) await finishLockinPhase();
+  const sig = activeSchedules(r.plusSchedules, new Date()).map(s => s.id).join(',');
+  if (sig !== lastSchedSig) await syncProtectRules();
+}
+
+function listedIn(host, list) { return !!host && (list || []).some(d => d && (host === d || host.endsWith('.' + d))); }
+
+// What the blocked page needs to offer the Plus extras for this address.
+async function plusBlockedInfo(url) {
+  if (!(await plusActive())) return { plus: false };
+  const host = domainOf(url) || '';
+  const r = await storeGet(['protect', 'categories', 'lockin', 'plusSchedules', 'plusEarn', 'plusFocusPrefs']);
+  const now = new Date();
+  const p = protectState(r.protect);
+  const focusList = focusBlockList(p, r.categories || {});
+  const open = activeSchedules(r.plusSchedules, now).filter(s => listedIn(host, scheduleSites(s, focusList)));
+  const pick = open.find(s => s.strict) || open[0];
+  const strictFocus = strictLocked(r.lockin, now.getTime());
+  return {
+    plus: true,
+    intent: focusPrefs(r.plusFocusPrefs).intent,
+    bank: earnBank(r.plusEarn, dayKey(now.getTime())),
+    strictFocus,
+    strict: (strictFocus && r.lockin.block !== false && listedIn(host, r.lockin.strictList)) || !!(pick && pick.strict),
+    schedule: pick ? { name: pick.name, until: scheduleUntil(pick, now).getTime(), strict: !!pick.strict } : null
+  };
+}
+
+async function saveIntent(host, text, allowedMins) {
+  if (!host || !(await plusActive())) return;
+  const t = intentClean(text);
+  if (!t) return;
+  const r = await storeGet(['plusIntents']);
+  await storeSet({ plusIntents: intentAdd(r.plusIntents, { ts: Date.now(), domain: host, text: t, allowedMins: Math.round(allowedMins) }) });
+}
+
+// Spend today's banked minutes on one site. Strict blocks stay shut: nothing opens those early.
+async function earnUse(url, intentText) {
+  if (!chrome.declarativeNetRequest || !(await plusActive())) return { ok: false };
+  const host = domainOf(url);
+  if (!host) return { ok: false };
+  const r = await storeGet(['protect', 'categories', 'lockin', 'plusSchedules', 'plusEarn']);
+  const now = new Date(), today = dayKey(now.getTime());
+  if (earnBank(r.plusEarn, today) < 1) return { ok: false, error: 'none' };
+  if (strictLocked(r.lockin, now.getTime())) return { ok: false, error: 'strict' };
+  const p = protectState(r.protect);
+  const focusList = focusBlockList(p, r.categories || {});
+  const open = activeSchedules(r.plusSchedules, now);
+  if (listedIn(host, open.filter(s => s.strict).flatMap(s => scheduleSites(s, focusList)))) return { ok: false, error: 'strict' };
+  const spend = earnSpend(r.plusEarn, today);
+  const lists = p.blocklist.map(normalizeHost).filter(Boolean).concat(focusList, open.flatMap(s => scheduleSites(s, focusList)));
+  if (!(await allowHost(host, lists, spend.used * 60000, RULE_PRIORITY.earnAllow))) return { ok: false };
+  await storeSet({ plusEarn: spend.bank });
+  if (intentText) { try { await saveIntent(host, intentText, spend.used); } catch (e) {} }
+  return { ok: true, mins: spend.used };
 }
 
 const SHORTS_SCRIPT_ID = 'ww-shortform';
@@ -494,7 +602,12 @@ async function allowAfterPause(url) {
   const host = domainOf(url);
   if (!host) return false;
   const cats = await getCategories();
-  const list = distractingDomains(cats);
+  return allowHost(host, distractingDomains(cats), PAUSE_ALLOW_MS, RULE_PRIORITY.pauseAllow);
+}
+// A temporary allow rule for one site, lifted by expirePauseAllows(). The rule names the listed
+// domain that matched (so every page of reddit.com opens, not only the one asked for).
+// The priority decides what it can open: the pause only (pauseAllow) or normal blocks too (earnAllow).
+async function allowHost(host, list, ms, priority) {
   let d = host, match = null;
   while (d) {
     if (list.includes(d)) { match = d; break; }
@@ -506,14 +619,16 @@ async function allowAfterPause(url) {
   const sess = await chrome.declarativeNetRequest.getSessionRules();
   const same = sess.find(x => x.condition && x.condition.requestDomains && x.condition.requestDomains[0] === match);
   const id = same ? same.id : Math.max(RULE_IDS.pauseAllow - 1, ...sess.map(x => x.id)) + 1;
-  await chrome.declarativeNetRequest.updateSessionRules({
-    removeRuleIds: [id],
-    addRules: [{ id, priority: 50, action: { type: 'allow' },
-      condition: { requestDomains: [match], resourceTypes: ['main_frame'] } }]
-  });
   const r = await chrome.storage.session.get('pauseAllows');
   const allows = r.pauseAllows || {};
-  allows[id] = Date.now() + PAUSE_ALLOW_MS;
+  // Re-allowing a site that is already open never shortens or weakens what it already had.
+  const keepUntil = same && same.priority > priority ? (allows[id] || 0) : 0;
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds: [id],
+    addRules: [{ id, priority: same ? Math.max(same.priority || 0, priority) : priority, action: { type: 'allow' },
+      condition: { requestDomains: [match], resourceTypes: ['main_frame'] } }]
+  });
+  allows[id] = Math.max(keepUntil, Date.now() + ms);
   await chrome.storage.session.set({ pauseAllows: allows });
   return true;
 }
@@ -545,17 +660,38 @@ function lockinLeft(l) {
 async function lockinOp(msg) {
   const l = await getLockin();
   const now = Date.now();
+  // Plus strict focus: while it runs, nothing ends, pauses or replaces the session early, whichever
+  // page asks. strictLocked() is false for anything odd or overdue, so this can never trap anyone.
+  const strictOn = strictLocked(l, now) && await plusActive();
+  if (strictOn && (msg.op === 'start' || msg.op === 'pause' || msg.op === 'end' || msg.op === 'dismiss')) return { refused: 'strict' };
   switch (msg.op) {
     case 'start': {
       const mins = Math.max(1, Math.min(240, msg.mins | 0 || LOCKIN_DEFAULTS.mins));
-      await storeSet({ lockin: {
+      const next = {
         phase: 'focus', task: String(msg.task || '').slice(0, 120), mins,
         breakMins: Math.max(0, Math.min(30, msg.breakMins == null ? LOCKIN_DEFAULTS.breakMins : msg.breakMins | 0)),
         totalMs: mins * 60000, startedAt: now, endsAt: now + mins * 60000, pausedLeft: null,
         sound: String(msg.sound || 'none'), block: msg.block !== false
-      } });
+      };
+      if (msg.preset) next.preset = String(msg.preset).slice(0, 24);
+      if (msg.strict && await plusActive()) {
+        next.strict = true;
+        // Freeze what is blocked right now (focus list + always-blocked), so edits made during the
+        // session cannot open anything until the timer ends.
+        if (next.block) {
+          const r = await storeGet(['protect', 'categories']);
+          const p = protectState(r.protect);
+          next.strictList = [...new Set(focusBlockList(p, r.categories || {}).concat(p.blocklist.map(normalizeHost).filter(Boolean)))];
+        }
+      }
+      await storeSet({ lockin: next });
       break;
     }
+    case 'emergency':   // the strict session's safety valve: the user typed the phrase on purpose
+      if (!l || l.phase !== 'focus') break;
+      if (!strictPhraseOk(msg.phrase)) return { refused: 'phrase' };
+      await completeFocus(l, Math.max(0, (l.totalMs || 0) - lockinLeft(l)), false, { emergency: true });
+      break;
     case 'pause':
       if (l && l.phase === 'focus' && l.pausedLeft == null) await storeSet({ lockin: Object.assign(l, { pausedLeft: lockinLeft(l), endsAt: null }) });
       break;
@@ -580,35 +716,51 @@ async function lockinOp(msg) {
   }
 }
 
-async function completeFocus(l, focusedMs, finished) {
+async function completeFocus(l, focusedMs, finished, opts) {
   const mins = Math.round(focusedMs / 60000);
-  if (mins >= 1) {
-    const key = dayKey(Date.now());
+  const emergency = !!(opts && opts.emergency);
+  const key = dayKey(Date.now());
+  if (mins >= 1 || emergency) {
     const r = await storeGet(['focusLog']);
     const log = r.focusLog || {};
     const day = log[key] || { mins: 0, sessions: 0 };
-    day.mins += mins; day.sessions += 1;
+    if (mins >= 1) { day.mins += mins; day.sessions += 1; }
+    if (emergency) day.emergencyExits = (day.emergencyExits || 0) + 1;   // Plus strict mode: kept honest in the record
     log[key] = day;
     const keys = Object.keys(log).sort();
     while (keys.length > 120) delete log[keys.shift()];
     await storeSet({ focusLog: log });
   }
+  // Plus: a session that ran to the end earns break minutes.
+  let earned = 0;
+  if (finished && mins >= 1) {
+    try {
+      if (await plusActive()) {
+        const r = await storeGet(['plusEarn', 'plusFocusPrefs']);
+        const c = earnCredit(r.plusEarn, key, mins, r.plusFocusPrefs);
+        earned = c.gained;
+        if (earned) await storeSet({ plusEarn: c.bank });
+      }
+    } catch (e) {}
+  }
+  const earnedText = earned ? ' You earned ' + earned + ' break minute' + (earned === 1 ? '' : 's') + '.' : '';
+  const plusFields = Object.assign({}, earned ? { earned } : {}, emergency ? { emergency: true } : {});
   stopPlayerSound();
   const now = Date.now();
   if (finished && l.breakMins > 0) {
     notify('lockin-' + now, {
       type: 'basic', iconUrl: 'icons/icon128.png', title: 'Session complete',
-      message: mins + ' minutes focused. Take a ' + l.breakMins + '-minute break.'
+      message: mins + ' minutes focused. Take a ' + l.breakMins + '-minute break.' + earnedText
     });
-    await storeSet({ lockin: { phase: 'break', task: l.task, mins: l.mins, breakMins: l.breakMins, doneMins: mins,
-      totalMs: l.breakMins * 60000, startedAt: now, endsAt: now + l.breakMins * 60000, pausedLeft: null, block: false } });
+    await storeSet({ lockin: Object.assign({ phase: 'break', task: l.task, mins: l.mins, breakMins: l.breakMins, doneMins: mins,
+      totalMs: l.breakMins * 60000, startedAt: now, endsAt: now + l.breakMins * 60000, pausedLeft: null, block: false }, plusFields) });
   } else {
     if (finished) {
       notify('lockin-' + now, {
-        type: 'basic', iconUrl: 'icons/icon128.png', title: 'Session complete', message: mins + ' minutes focused. Nice work.'
+        type: 'basic', iconUrl: 'icons/icon128.png', title: 'Session complete', message: mins + ' minutes focused. Nice work.' + earnedText
       });
     }
-    await storeSet({ lockin: { phase: 'done', doneMins: mins, doneAt: now } });
+    await storeSet({ lockin: Object.assign({ phase: 'done', doneMins: mins, doneAt: now }, plusFields) });
   }
 }
 

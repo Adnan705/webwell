@@ -49,12 +49,38 @@ let bmHidden = [];  // auto domains the user hid   ('ntHidden')
 let autoCache = []; // auto top-site domains (kept in the snapshot so the dock paints instantly)
 let daysData = {};
 
+// WebWell Plus on this page. The last known answer rides in the boot snapshot so a Plus look
+// paints on the first frame; the real check (lib/plus.js) confirms it a moment later and is
+// re-run whenever the key changes, so unlocking or removing Plus applies without a reload.
+let plusOn = !!BOOT.plusOn, plusChecked = false;
+const plusListeners = [];
+window.wwPlus = {
+  get on() { return plusOn; },
+  get checked() { return plusChecked; },   // true once lib/plus.js has really verified the key on this page
+  onChange(fn) { plusListeners.push(fn); }
+};
+function setPlus(v) {
+  v = !!v;
+  const first = !plusChecked;
+  plusChecked = true;
+  if (v === plusOn) { if (first) plusListeners.forEach(fn => { try { fn(v); } catch (e) {} }); return; }
+  plusOn = v;
+  applyTheme(); applyBackground(); lastClockText = ''; tickClock(); saveBoot();
+  if (window.WW_THEMES) window.WW_THEMES.refresh();
+  plusListeners.forEach(fn => { try { fn(v); } catch (e) {} });
+}
+function checkPlus() {
+  if (typeof plusActive !== 'function') return Promise.resolve();
+  return plusActive().then(setPlus, () => {});
+}
+
 // Every write goes through persist(): it refreshes the instant-paint snapshot
 // and then saves to chrome.storage.
 function saveBoot() {
   try {
     localStorage.setItem('ww_boot', JSON.stringify({
       v: 1, theme: profile.theme, bgMode: profile.bgMode, vecStyle: profile.vecStyle, vecPal: profile.vecPal, name: profile.name, bgPick: profile.bgPick, clock24: !!profile.clock24,
+      accent: profile.accent || '', clockStyle: profile.clockStyle || '', plusOn,
       focus, tasksDate: today, tasks: tasks[today] || [], bookmarks, hidden: bmHidden, auto: autoCache
     }));
   } catch (e) {}
@@ -71,6 +97,8 @@ function hydrateFromBoot() {
   profile.vecPal = BOOT.vecPal || 'dawn';
   profile.bgPick = BOOT.bgPick || null;
   profile.clock24 = !!BOOT.clock24;
+  if (BOOT.accent) profile.accent = BOOT.accent;
+  if (BOOT.clockStyle) profile.clockStyle = BOOT.clockStyle;
   if (BOOT.focus && BOOT.focus.date === today) focus = BOOT.focus;
   if (BOOT.tasksDate === today && Array.isArray(BOOT.tasks)) tasks[today] = BOOT.tasks;
   bookmarks = Array.isArray(BOOT.bookmarks) ? BOOT.bookmarks : [];
@@ -79,7 +107,7 @@ function hydrateFromBoot() {
 }
 
 function stateSig() {
-  return JSON.stringify([profile.name, profile.theme, profile.bgMode, profile.vecStyle, profile.vecPal, profile.bgPick, profile.clock24, focus,
+  return JSON.stringify([profile.name, profile.theme, profile.bgMode, profile.vecStyle, profile.vecPal, profile.bgPick, profile.clock24, profile.accent, profile.clockStyle, focus,
     tasks[today] || [], bookmarks, bmHidden]);
 }
 
@@ -108,8 +136,14 @@ async function loadState() {
 }
 
 /* ---------------- theme / clock / greeting ---------------- */
+// The look that is actually shown: a saved Plus choice displays as the free default while Plus is off.
+function look() {
+  return window.WW_THEMES ? window.WW_THEMES.effective(profile, plusOn)
+    : { vecStyle: profile.vecStyle, vecPal: profile.vecPal, accent: 'coral', clockStyle: 'classic' };
+}
 function applyTheme() {
   document.documentElement.setAttribute('data-theme', profile.theme || 'dusk');
+  if (window.WW_THEMES) window.WW_THEMES.applyLook(look());
 }
 
 let lastClockText = '';
@@ -128,7 +162,8 @@ function tickClock() {
     t = String(h).padStart(2, '0') + ':' + mm;
   } else {
     const ap = h >= 12 ? 'PM' : 'AM';
-    t = (h % 12 || 12) + ':' + mm + ' ' + ap;
+    // the Minimal clock (Plus) is just the digits
+    t = (h % 12 || 12) + ':' + mm + (look().clockStyle === 'minimal' ? '' : ' ' + ap);
   }
   if (t !== lastClockText) { lastClockText = t; $('clock').textContent = t; }
   const wd = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
@@ -383,9 +418,11 @@ function applyBackground() {
   }
   const vec = $('bgVector');
   if (isVector) {
-    const V = window.WW_VBG;
-    document.documentElement.style.backgroundColor = V.base(profile.vecPal);
-    vec.style.backgroundImage = 'url("' + V.dataUri(profile.vecStyle, profile.vecPal) + '")';
+    const V = window.WW_VBG, lk = look();
+    document.documentElement.style.backgroundColor = V.base(lk.vecPal);
+    const uri = V.dataUri(lk.vecStyle, lk.vecPal);
+    // only touch the image when it changes: re-setting a big data URI makes the browser decode it again
+    if (vec._uri !== uri) { vec._uri = uri; vec.style.backgroundImage = 'url("' + uri + '")'; }
     vec.classList.remove('hidden');
     requestAnimationFrame(() => vec.classList.add('on'));
   } else {
@@ -396,7 +433,7 @@ function applyBackground() {
 function wireShuffle() {
   $('vecShuffle').addEventListener('click', async () => {
     if (!window.WW_VBG) return;
-    const n = window.WW_VBG.pick({ style: profile.vecStyle, pal: profile.vecPal });
+    const n = window.WW_VBG.pick({ style: profile.vecStyle, pal: profile.vecPal }, plusOn);
     profile.vecStyle = n.style; profile.vecPal = n.pal;
     applyBackground();
     await persist({ profile });
@@ -601,8 +638,23 @@ function paintAll(first) {
   try {
     chrome.storage.onChanged.addListener((c, area) => {
       if (area === 'local' && c.focusLog) { focusToday = (c.focusLog.newValue || {})[today] || null; renderFocusStat(); }
+      // a page saved from the popup shows up in an already-open new tab straight away
+      if (area === 'local' && c.ntBookmarks) { bookmarks = Array.isArray(c.ntBookmarks.newValue) ? c.ntBookmarks.newValue : []; renderBookmarks(false); saveBoot(); }
+      if (area === 'local' && c.plusKey) checkPlus();
     });
   } catch (e) {}
+
+  // Plus: confirm the snapshot's guess, and wire the Customise panel.
+  checkPlus();
+  if (window.WW_THEMES) window.WW_THEMES.wire({
+    getProfile: () => profile,
+    isPlus: () => plusOn,
+    save: patch => {
+      Object.assign(profile, patch);
+      applyTheme(); applyBackground(); lastClockText = ''; tickClock();
+      persist({ profile }).catch(() => {});
+    }
+  });
 
   // 3) History is large — load last; auto-suggested sites fill in when ready.
   store.get(['days']).then(r => {

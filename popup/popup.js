@@ -20,13 +20,14 @@ const ICON = {
 $('openDash').innerHTML = ICON.ext;
 
 /* ---------------- state ---------------- */
-const KEYS = ['days', 'categories', 'limits', 'settings', 'profile', 'lockin', 'protect', 'protectStats', 'focusLog', 'ntMusic', 'lockPrefs'];
+const KEYS = ['ntBookmarks', 'days', 'categories', 'limits', 'settings', 'profile', 'lockin', 'protect', 'protectStats', 'focusLog', 'ntMusic', 'lockPrefs', 'plusPresets'];
 let S = {};            // storage snapshot
 let live = null;       // { domain, elapsed } from the background
 let tabDomain = null;  // active tab's site (null for internal pages)
+let savedTab = null;   // the page in front ({ url, title }), or null when it can't be saved (browser pages)
 let tab = 'today';
 try { tab = localStorage.getItem('ww_pop_tab') || 'today'; } catch (e) {}
-let pick = { mins: 25, sound: 'rain', block: true, task: '' };
+let pick = { mins: 25, sound: 'rain', block: true, task: '', strict: false };
 let ui = { playing: false, tab: 'radio', title: 'Lofi Focus Radio', sub: 'Tap play to start', art: '../newtab/img/lofi-disc.webp' };
 let ticker = null;
 
@@ -39,10 +40,12 @@ async function load() {
   const lp = Object.assign({ mins: 25, sound: 'rain', block: true }, S.lockPrefs || {});
   if (!pick.task) { pick.mins = lp.mins; pick.sound = lp.sound; pick.block = lp.block !== false; }
   S.track = await hasTracking();
+  S.plus = await plusActive();
   try { const r = await chrome.runtime.sendMessage({ type: 'webwell-live' }); live = r && r.live; } catch (e) { live = null; }
   try {
     const [t] = await chrome.tabs.query({ active: true, currentWindow: true });
     tabDomain = t ? domainOf(t.url) : null;
+    savedTab = t && /^https?:\/\//i.test(t.url || '') ? { url: t.url, title: t.title || '' } : null;
     // On WebWell's own block screen, the site that matters is the one that was blocked.
     if (t && !tabDomain && t.url && t.url.indexOf(chrome.runtime.getURL('blocked/')) === 0) {
       let orig = '';
@@ -52,7 +55,31 @@ async function load() {
     }
   } catch (e) { tabDomain = null; }
   document.body.classList.toggle('dark', !!S.settings.darkMode);
+  renderSaveBtn();
 }
+
+/* ---------------- save this page to the new tab ---------------- */
+const bmKey = u => String(u || '').trim().toLowerCase().replace(/^[a-z][a-z0-9+.-]*:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
+function renderSaveBtn() {
+  const b = $('saveTab');
+  b.hidden = !savedTab;
+  const on = !!savedTab && (S.ntBookmarks || []).some(x => bmKey(x.url) === bmKey(savedTab.url));
+  b.classList.toggle('on', on);
+  b.title = on ? 'Saved on your new tab. Click to remove' : 'Save this page to your new tab';
+  b.setAttribute('aria-label', b.title);
+  b.innerHTML = '<svg viewBox="0 0 24 24" fill="' + (on ? 'currentColor' : 'none') + '" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 4h11a1.5 1.5 0 0 1 1.5 1.5V21l-7-4.6L5 21V5.5A1.5 1.5 0 0 1 6.5 4z"/></svg>';
+}
+$('saveTab').addEventListener('click', async () => {
+  if (!savedTab) return;
+  const r = await chrome.storage.local.get(['ntBookmarks']);
+  let list = Array.isArray(r.ntBookmarks) ? r.ntBookmarks : [];
+  const k = bmKey(savedTab.url), had = list.some(x => bmKey(x.url) === k);
+  list = had ? list.filter(x => bmKey(x.url) !== k)
+    : list.concat({ id: 'b' + Date.now().toString(36), name: (savedTab.title || domainOf(savedTab.url) || '').slice(0, 60), url: savedTab.url });
+  await storeSet({ ntBookmarks: list });
+  S.ntBookmarks = list; renderSaveBtn();
+  toast(had ? 'Removed from your new tab' : 'Saved to your new tab');
+});
 
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -235,6 +262,24 @@ function mmss(ms) {
 const soundChips = cur => '<div class="chips" id="soundChips">' + SOUNDS.map(([k, n]) =>
   '<button class="chip' + (cur === k ? ' on' : '') + '" data-s="' + k + '">' + n + '</button>').join('') + '</div>';
 
+// Plus: one-tap presets above the setup, and the strict switch below the blocking switch.
+function presetsHtml() {
+  if (!S.plus) return '';
+  const list = presetsList(S.plusPresets);
+  return '<div class="h"><b>Presets</b><button class="link" id="fPresetEdit">' + (list.length ? 'Edit' : 'Add one') + '</button></div>' +
+    (list.length ? '<div class="presets" id="fPresets">' + list.map(p =>
+      '<button class="preset" data-preset="' + esc(p.id) + '" title="Start ' + esc(p.name) + ' now"><b>' + esc(p.name) + '</b><small>' +
+        esc(p.mins + ' min · ' + (p.strict ? 'strict' : (PF_SOUND_LABEL[p.sound] || 'Silence'))) + '</small></button>').join('') + '</div>' : '') +
+    '<div class="pre-sep"></div>';
+}
+function strictRowHtml() {
+  return '<div class="toggle-row" style="border-top:0;padding-bottom:0"><div><div class="t">Strict mode ' + (S.plus ? '' : '<span class="plus-badge">Plus</span>') +
+    '</div><div class="d">Can’t be ended early. Blocked sites stay blocked.</div></div>' +
+    (S.plus ? '<label class="tg"><input type="checkbox" id="fStrict"' + (pick.strict ? ' checked' : '') + '><span></span></label>'
+      : '<button class="btn soft sm-btn" id="fStrictMore" aria-expanded="false">See how</button>') + '</div>' +
+    (S.plus ? '' : '<div id="fStrictLock" class="lock-in" hidden></div>');
+}
+
 function renderFocus() {
   const l = S.lockin;
   const running = l && (l.phase === 'focus' || l.phase === 'break');
@@ -242,15 +287,24 @@ function renderFocus() {
   let html = '';
   if (running) {
     const isBreak = l.phase === 'break', paused = l.pausedLeft != null;
-    html += '<section class="card"><div class="timer"><div class="ph">' + (isBreak ? 'Break' : paused ? 'Paused' : 'Focusing') + '</div>' +
+    const strict = S.plus && strictLocked(l, Date.now());
+    html += '<section class="card"><div class="timer"><div class="ph">' + (isBreak ? 'Break' : paused ? 'Paused' : strict ? 'Strict focus' : 'Focusing') + '</div>' +
       '<div class="tt">' + esc(isBreak ? 'Stretch and look away from the screen.' : (l.task || 'Focus session')) + '</div>' +
       '<div class="tm" id="tTime">' + mmss(leftMs(l)) + '</div><div class="prog"><i id="tBar"></i></div></div>' +
-      '<div class="btns">' + (isBreak ? '' : '<button class="btn soft" id="fPause">' + (paused ? 'Resume' : 'Pause') + '</button>') +
-      '<button class="btn soft" id="fAdd">+5 min</button><button class="btn ghost" id="fEnd">' + (isBreak ? 'Skip break' : 'End') + '</button></div>';
+      (strict
+        // Strict: no pause, no end. Only more time, and the emergency exit below.
+        ? '<div class="btns"><button class="btn soft" id="fAdd">+5 min</button></div>' +
+          '<div class="lockline">' + ICON.lock + 'Strict mode is on until ' + esc(new Date(l.endsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })) + '.</div>' +
+          '<button class="link em-link" id="fEmergency" aria-expanded="false">Emergency exit</button>' +
+          '<form class="em-box" id="fEmBox" hidden><label for="fEmIn">To stop now, type <b>' + esc(STRICT_PHRASE) + '</b></label>' +
+          '<div class="row" style="margin-top:8px"><input class="txt-in" id="fEmIn" autocomplete="off" spellcheck="false">' +
+          '<button class="btn" id="fEmGo" type="submit" disabled>Stop</button></div><div class="d em-d">It will be noted in your focus history.</div></form>'
+        : '<div class="btns">' + (isBreak ? '' : '<button class="btn soft" id="fPause">' + (paused ? 'Resume' : 'Pause') + '</button>') +
+          '<button class="btn soft" id="fAdd">+5 min</button><button class="btn ghost" id="fEnd">' + (isBreak ? 'Skip break' : 'End') + '</button></div>');
     if (!isBreak) html += '<span class="lbl">Sound</span>' + soundChips(l.sound || 'none');
     html += '</section>';
   } else {
-    html += '<section class="card"><label class="lbl" for="fTask">What are you working on?</label>' +
+    html += '<section class="card">' + presetsHtml() + '<label class="lbl" for="fTask">What are you working on?</label>' +
       '<input class="txt-in" id="fTask" maxlength="120" autocomplete="off" placeholder="e.g. Finish CS301 assignment" value="' + esc(pick.task) + '">' +
       '<span class="lbl">Length</span><div class="chips" id="lenChips" style="margin-top:0">' + [25, 50, 90].map(n =>
         '<button class="chip' + (pick.mins === n ? ' on' : '') + '" data-m="' + n + '">' + n + ' min</button>').join('') +
@@ -258,16 +312,21 @@ function renderFocus() {
       '<span class="lbl">Sound</span>' + soundChips(pick.sound) +
       '<div class="toggle-row" style="margin-top:12px;border-top:0;padding-bottom:0"><div><div class="t">Block distracting sites</div><div class="d">Until the session ends</div></div>' +
       '<label class="tg"><input type="checkbox" id="fBlock"' + (pick.block ? ' checked' : '') + '><span></span></label></div>' +
+      strictRowHtml() +
       '<button class="btn block" id="fStart" style="margin-top:14px">Start ' + pick.mins + '-minute session</button>' +
       '<div class="lockline">' + ICON.lock + (day && day.sessions ? 'Today: ' + day.sessions + ' session' + (day.sessions === 1 ? '' : 's') + ' · ' + fmtDurShort(day.mins * 60) + ' focused' : 'Sessions you finish show up in your dashboard.') + '</div></section>';
+    if (!S.plus) html += plusLockHtml('presets');
   }
   html += playerHtml();
   view.innerHTML = html;
   wirePlayer();
+  plusWireLocks(view);
   if (!running) wireFocusSetup(); else { wireFocusRunning(l); tickFocus(); ticker = setInterval(tickFocus, 250); }
 }
 function tickFocus() {
   const l = S.lockin; if (!l || !$('tTime')) return;
+  // Strict time is up: show the normal controls again (the background ends the session itself).
+  if ($('fEmergency') && !strictLocked(l, Date.now()) && !(document.activeElement && document.activeElement.id === 'fEmIn')) { renderFocus(); return; }
   const left = leftMs(l);
   $('tTime').textContent = mmss(left);
   $('tBar').style.width = Math.min(100, (1 - left / (l.totalMs || 1)) * 100).toFixed(1) + '%';
@@ -280,6 +339,42 @@ function wireFocusRunning(l) {
   on('fEnd', () => sendOp('end'));
   const sc = $('soundChips');
   if (sc) sc.querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => { playSound(b.dataset.s); sc.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b)); }));
+  // Strict mode's safety valve: typing the phrase on purpose is the only early way out.
+  on('fEmergency', () => {
+    const box = $('fEmBox'); box.hidden = !box.hidden;
+    $('fEmergency').setAttribute('aria-expanded', !box.hidden);
+    if (!box.hidden) $('fEmIn').focus();
+  });
+  if ($('fEmIn')) {
+    $('fEmIn').addEventListener('input', e => { $('fEmGo').disabled = !strictPhraseOk(e.target.value); });
+    $('fEmBox').addEventListener('submit', async e => {
+      e.preventDefault();
+      if (!strictPhraseOk($('fEmIn').value)) return;
+      $('fEmGo').disabled = true;
+      let r = null;
+      try { r = await chrome.runtime.sendMessage({ type: 'ww-lockin', op: 'emergency', phrase: $('fEmIn').value }); } catch (err) {}
+      if (r && r.ok) { toast('Session stopped. Be kind to yourself.'); $('fEmIn').blur(); await load(); render(); }
+      else { $('fEmGo').disabled = false; toast('That did not work. Check the phrase.'); }
+    });
+  }
+}
+
+// One path for the Start button and the Plus presets, so both ask for the same permissions.
+async function startFocusSession(o) {
+  let block = o.block || o.strict;
+  if (!block) await askAlertsOnce();                     // session-end alerts need the notifications permission
+  if (block) {
+    let ok = false;
+    try { ok = await chrome.permissions.contains(ALL_URLS) || await chrome.permissions.request(ALL_URLS); } catch (e) {}
+    if (!ok) { block = false; toast('Starting without blocking: site access wasn’t allowed.'); }
+  }
+  const extra = {};
+  if (o.strict && S.plus) extra.strict = true;
+  if (o.preset) extra.preset = o.preset;
+  await sendOp('start', Object.assign({ mins: o.mins, task: o.task, sound: o.sound, block, breakMins: (S.lockPrefs || {}).breakMins }, extra));
+  playSound(o.sound);
+  pick.task = '';
+  await load(); render();
 }
 function wireFocusSetup() {
   $('fTask').addEventListener('input', e => { pick.task = e.target.value; });
@@ -291,20 +386,30 @@ function wireFocusSetup() {
   $('soundChips').querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
     pick.sound = b.dataset.s; $('soundChips').querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === b));
   }));
-  $('fBlock').addEventListener('change', e => { pick.block = e.target.checked; });
+  $('fBlock').addEventListener('change', e => {
+    pick.block = e.target.checked;
+    if (!pick.block && $('fStrict')) { pick.strict = false; $('fStrict').checked = false; }   // strict needs blocking
+  });
+  if ($('fStrict')) $('fStrict').addEventListener('change', e => {
+    pick.strict = e.target.checked;
+    if (pick.strict) { pick.block = true; $('fBlock').checked = true; }
+  });
+  if ($('fStrictMore')) $('fStrictMore').addEventListener('click', () => {
+    const box = $('fStrictLock');
+    if (!box.innerHTML) { box.innerHTML = plusLockHtml('strict'); plusWireLocks(box); }
+    box.hidden = !box.hidden;
+    $('fStrictMore').setAttribute('aria-expanded', !box.hidden);
+  });
+  if ($('fPresetEdit')) $('fPresetEdit').addEventListener('click', () => openDash('protect'));
+  if ($('fPresets')) $('fPresets').querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    const p = presetsList(S.plusPresets).find(x => x.id === b.dataset.preset);
+    if (!p) return;
+    // Fills in the session from the preset and starts it straight away (one tap).
+    startFocusSession({ mins: p.mins, sound: p.sound, block: p.block, strict: p.strict, task: ($('fTask').value || pick.task).trim(), preset: p.name });
+  }));
   $('fStart').addEventListener('click', async () => {
-    let block = pick.block;
-    if (!block) await askAlertsOnce();                     // session-end alerts need the notifications permission
-    if (block) {
-      let ok = false;
-      try { ok = await chrome.permissions.contains(ALL_URLS) || await chrome.permissions.request(ALL_URLS); } catch (e) {}
-      if (!ok) { block = false; toast('Starting without blocking: site access wasn’t allowed.'); }
-    }
     chrome.storage.local.set({ lockPrefs: { mins: pick.mins, breakMins: (S.lockPrefs || {}).breakMins == null ? 5 : S.lockPrefs.breakMins, sound: pick.sound, block: pick.block } }).catch(() => {});
-    await sendOp('start', { mins: pick.mins, task: pick.task.trim(), sound: pick.sound, block, breakMins: (S.lockPrefs || {}).breakMins });
-    playSound(pick.sound);
-    pick.task = '';
-    await load(); render();
+    await startFocusSession({ mins: pick.mins, task: pick.task.trim(), sound: pick.sound, block: pick.block, strict: pick.strict });
   });
 }
 
@@ -360,6 +465,7 @@ function renderProtect() {
     const cur = protectState(S.protect);
     if (isBlocked) {
       if (cur.pinHash) { toast('Protected by a PIN. Use the dashboard.'); return; }
+      if (S.plus && strictLocked(S.lockin, Date.now())) { toast('Strict focus is on. Your block list is locked for now.'); return; }
       cur.blocklist = cur.blocklist.filter(d => d !== tabDomain);
       await saveProtect(cur); toast(tabDomain + ' unblocked'); renderProtect(); return;
     }
@@ -445,7 +551,7 @@ $('trackPill').addEventListener('click', async () => {
 
 // Keep the page current without disturbing whatever the user is typing in.
 chrome.storage.onChanged.addListener((c, area) => {
-  if (area !== 'local' || !(c.lockin || c.protectStats || c.focusLog)) return;
+  if (area !== 'local' || !(c.lockin || c.protectStats || c.focusLog || c.plusKey || c.plusPresets)) return;
   if (document.activeElement && /INPUT|SELECT/.test(document.activeElement.tagName)) return;
   load().then(() => { if (tab === 'focus' || tab === 'protect') render(); });
 });
@@ -462,4 +568,13 @@ setInterval(() => {
   render();
   // Only ask a player that's already running; opening the popup shouldn't start one.
   try { if (await playerExists()) { const st = await popSend({ cmd: 'get-state' }); if (st && st.ui) applyPlayerUI(st.ui); } } catch (e) {}
+})();
+
+/* ---------------- "Go Plus" strip ---------------- */
+(async () => {
+  const b = $('goPlus');
+  const sync = async () => { b.hidden = await plusActive(); };
+  b.addEventListener('click', () => openDash('plus'));
+  await sync();
+  try { chrome.storage.onChanged.addListener((c, area) => { if (area === 'local' && c.plusKey) sync(); }); } catch (e) {}
 })();

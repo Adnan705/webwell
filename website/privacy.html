@@ -26,7 +26,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
-<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://webwell.app/privacy#webpage","url":"https://webwell.app/privacy","name":"Privacy Policy | WebWell","description":"What the WebWell extension stores, when anything leaves your browser, and what this website collects.","inLanguage":"en","isPartOf":{"@id":"https://webwell.app/#website"},"dateModified":"2026-10-21"},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"WebWell","item":"https://webwell.app/"},{"@type":"ListItem","position":2,"name":"Privacy policy","item":"https://webwell.app/privacy"}]}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"WebPage","@id":"https://webwell.app/privacy#webpage","url":"https://webwell.app/privacy","name":"Privacy Policy | WebWell","description":"What the WebWell extension stores, when anything leaves your browser, and what this website collects.","inLanguage":"en","isPartOf":{"@id":"https://webwell.app/#website"},"dateModified":"2026-10-30"},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"WebWell","item":"https://webwell.app/"},{"@type":"ListItem","position":2,"name":"Privacy policy","item":"https://webwell.app/privacy"}]}]}</script>
 <script>try { if (localStorage.getItem("ww-theme") === "dark") document.documentElement.setAttribute("data-theme", "dark"); } catch (e) {}</script>
 <style>
 @font-face{font-family:'Geist';font-style:normal;font-weight:400 700;font-display:swap;src:url(/fonts/geist-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
@@ -122,7 +122,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
 <main><div class="wrap"><article class="doc">
   <span class="eyebrow">Privacy</span>
   <h1>Privacy policy</h1>
-  <p class="updated">Last updated October 25, 2026 · applies to WebWell 1.8.2 and this website</p>
+  <p class="updated">Last updated October 30, 2026 · applies to WebWell 1.9.0 and this website</p>
 
   <aside class="short" aria-label="The short version">
     <h2>The short version</h2>
@@ -153,11 +153,14 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
   <p>WebWell makes no network requests of its own to report your activity. These features connect to other services, and only when you use them:</p>
   <ul>
     <li><b>Ask WebWell (AI chat, optional):</b> works only with your own Gemini API key. When you ask a question, your question and a short summary of your statistics go to Google’s Gemini API. Nothing is sent at any other time. Google’s terms apply to that request.</li>
+    <li><b>AI weekly coach (WebWell Plus, optional):</b> works only with your own Google AI key. When you press the button, a short summary of your own numbers goes to Google, and nothing is sent at any other time. Google’s terms apply to that request.</li>
     <li><b>Spotify:</b> when you play something from the Spotify tab, WebWell loads Spotify’s own embedded player and asks Spotify’s public pages for the names, artists and covers of the songs in the link you pasted. Spotify’s privacy policy applies to the player. WebWell never sees your Spotify login.</li>
     <li><b>SoundCloud:</b> searches and plays tracks from SoundCloud when you use that tab.</li>
     <li><b>Lofi radio:</b> streams from SomaFM when you press play.</li>
     <li><b>Search box:</b> a search on the new tab goes to your browser’s default search engine, exactly as typing in the address bar would.</li>
   </ul>
+  <p><b>WebWell Plus keys.</b> Plus is an optional paid upgrade. If you have a Plus key, it is checked inside the extension against a public key that ships with the code. No server is contacted, and nothing about you or your key is sent to anyone, now or later. The key is saved in your browser’s local extension storage with the rest of your data. I keep a private list of the keys I issue, with only a label (for example “family”) and a key ID. It never includes browsing data, because I never receive any.</p>
+  <p><b>Buying Plus.</b> Payments are handled by Paddle, which is the seller of record. When checkout opens on the <a class="link" href="/plus">Plus page</a>, Paddle loads its own script and form, and <a class="link" href="https://www.paddle.com/legal/privacy" rel="noopener">Paddle’s privacy notice</a> applies to what you enter there. I never see your card details. After you pay, Paddle gives me your name, email address and the order number. I use them only to email your key, answer questions and handle a refund, and I keep them with your key so I can send it again if you lose it. Buying Plus does not change anything else on this page, and none of this involves your browsing data.</p>
   <p>The landmark photos and fonts are bundled inside the extension. The rain, noise and wave sounds are generated on your device, and site icons come from your browser’s own icon cache.</p>
 
   <h2 id="permissions">Why WebWell asks for each permission</h2>
@@ -166,6 +169,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     <li><b>Screen-time tracking (tabs, web navigation and site icons; you choose in the welcome screens):</b> to see which site is in your active tab so it can count your screen time, and to show the page you’re redirected to when something is blocked. Your browser may word this as “read your browsing history”. The record stays on your device and is never sent anywhere. If you leave it off, WebWell can’t count your time, so there are no stats or site limits, but the timer, music, tasks and backgrounds still work.</li>
     <li><b>Idle and alarms:</b> to pause tracking when you step away and to run the focus timer.</li>
     <li><b>Storage:</b> to keep your data on your device.</li>
+    <li><b>Active tab and scripting:</b> the popup’s “Save this page” button uses the active tab, only when you press it, to read the title and address of the page you are on. Scripting is used to hide short-video feeds on sites you have allowed.</li>
     <li><b>Offscreen:</b> to keep music playing after you close the new tab.</li>
     <li><b>Search:</b> so the new tab’s search box uses your default search engine.</li>
     <li><b>Notifications (asked when you first turn on a limit, alert or focus session):</b> for time-limit alerts and focus-session reminders.</li>
@@ -201,7 +205,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 40px; }
     <small>A free browser extension for Brave and Chrome. © 2026 WebWell &middot; Made by <a href="https://adnankhan.cc" rel="noopener" style="color:inherit;text-decoration:underline;text-underline-offset:3px">adnankhan.cc</a></small>
   </div>
   <nav class="foot-links" aria-label="Footer">
-    <a href="/">Home</a><a href="/#faq">FAQ</a><a href="/blog">Blog</a><a href="/install">Install</a><a href="https://github.com/Adnan705/webwell" rel="noopener">GitHub</a><a href="/privacy" aria-current="page">Privacy policy</a><a href="mailto:info.adnanak@gmail.com">Contact</a>
+    <a href="/">Home</a><a href="/#faq">FAQ</a><a href="/blog">Blog</a><a href="/plus">WebWell Plus</a><a href="/install">Install</a><a href="https://github.com/Adnan705/webwell" rel="noopener">GitHub</a><a href="/privacy" aria-current="page">Privacy policy</a><a href="/terms">Terms of service</a><a href="/refund">Refund policy</a><a href="mailto:info.adnanak@gmail.com">Contact</a>
   </nav>
 </div></footer>
 

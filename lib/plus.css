@@ -1,0 +1,10 @@
+/* WebWell Plus: shared bits (locked-feature card, badge, buttons). Used by popup, dashboard, new tab and blocked page. */
+.plus-badge{display:inline-block;font:700 10px/1 "Inter",system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,#ef6a52,#e0523d);padding:4px 7px;border-radius:999px;vertical-align:middle}
+.plus-lock{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:16px 18px;border:1px dashed rgba(224,82,61,.45);border-radius:14px;background:rgba(239,106,82,.06);font-family:"Inter",system-ui,sans-serif}
+.plus-lock-t{font-size:14px;font-weight:700;color:inherit}
+.plus-lock-d{margin:0;font-size:12.5px;line-height:1.55;opacity:.75}
+.plus-lock-b{display:flex;align-items:center;gap:12px;margin-top:6px}
+.plus-btn{font:600 12.5px/1 "Inter",system-ui,sans-serif;color:#fff;background:#e8604c;border:0;border-radius:999px;padding:9px 16px;cursor:pointer}
+.plus-btn:hover{background:#cf4c38}
+.plus-link{font:500 12.5px/1 "Inter",system-ui,sans-serif;color:inherit;opacity:.75;background:none;border:0;padding:4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.plus-link:hover{opacity:1}
